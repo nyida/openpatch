@@ -1,0 +1,122 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
+  runs      Run[]
+}
+
+model Run {
+  id                 String         @id @default(cuid())
+  userId             String?
+  user               User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt          DateTime       @default(now())
+  inputText          String
+  conversationHistory Json?
+  taskType           String
+  versionTag         String?
+  latencyMs          Int?
+  costEstimate       Float?
+  finalAnswer        String?
+  reliability        Json?
+  attachments        Attachment[]
+  retrievalChunks RetrievalChunk[]
+  candidates   Candidate[]
+  judgeDecision JudgeDecision?
+  evalResults  EvalResult[]
+}
+
+model Attachment {
+  id           String   @id @default(cuid())
+  runId        String
+  run          Run      @relation(fields: [runId], references: [id], onDelete: Cascade)
+  type         String
+  originalName String
+  storagePath  String
+  url          String?
+}
+
+model RetrievalChunk {
+  id       String @id @default(cuid())
+  runId    String
+  run      Run    @relation(fields: [runId], references: [id], onDelete: Cascade)
+  docId    String
+  chunkId  String
+  text     String
+  score    Float
+}
+
+model Candidate {
+  id          String        @id @default(cuid())
+  runId       String
+  run         Run           @relation(fields: [runId], references: [id], onDelete: Cascade)
+  modelName   String
+  promptHash  String?
+  outputText  String
+  tokenCounts Json?
+  latencyMs   Int?
+  verifications Verification[]
+}
+
+model Verification {
+  id          String   @id @default(cuid())
+  candidateId String
+  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  type        String
+  resultJson  Json
+  passFail    Boolean
+  notes       String?
+}
+
+model JudgeDecision {
+  id                String   @id @default(cuid())
+  runId             String   @unique
+  run               Run      @relation(fields: [runId], references: [id], onDelete: Cascade)
+  chosenCandidateId String
+  rubricScoresJson  Json
+  rationaleText     String
+}
+
+model EvalSuite {
+  id          String     @id @default(cuid())
+  name        String
+  description String?
+  cases       EvalCase[]
+}
+
+model EvalCase {
+  id                    String      @id @default(cuid())
+  suiteId               String
+  suite                 EvalSuite   @relation(fields: [suiteId], references: [id], onDelete: Cascade)
+  inputText             String
+  attachmentsRef        String?
+  expectedPropertiesJson Json?
+  taskType              String
+  results               EvalResult[]
+}
+
+model EvalResult {
+  id         String   @id @default(cuid())
+  caseId     String
+  case       EvalCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  runId      String
+  run        Run      @relation(fields: [runId], references: [id], onDelete: Cascade)
+  passFail   Boolean
+  metricsJson Json?
+}
+
+model ApiKey {
+  id        String   @id @default(cuid())
+  userId    String?
+  provider  String
+  encrypted String
+  createdAt DateTime @default(now())
+}
