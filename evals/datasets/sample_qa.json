@@ -1,0 +1,5 @@
+[
+  { "id": "q1", "prompt": "What is 2 + 2? Reply with only: ANSWER: <value>", "ground_truth": "4" },
+  { "id": "q2", "prompt": "What is the capital of France? Reply with only: ANSWER: <value>", "ground_truth": "Paris" },
+  { "id": "q3", "prompt": "How many continents are there? Reply with only: ANSWER: <value>", "ground_truth": "7" }
+]

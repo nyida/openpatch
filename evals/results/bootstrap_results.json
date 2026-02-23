@@ -1,0 +1,11 @@
+{
+  "paired_difference": {
+    "mean": 0.0,
+    "ci_lower": 0.0,
+    "ci_upper": 0.0
+  },
+  "wilcoxon": {
+    "note": "run with scipy for Wilcoxon"
+  },
+  "n_paired": 1
+}

@@ -10,6 +10,7 @@ const bodySchema = z.object({
   urls: z.array(z.string().url()).optional(),
   attachmentIds: z.array(z.string()).optional(),
   conversationHistory: z.array(z.object({ role: z.string(), content: z.string() })).optional(),
+  improvedMode: z.boolean().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -23,6 +24,7 @@ export async function POST(req: NextRequest) {
     const result = await executeRun({
       ...parsed.data,
       userId: session?.id,
+      improvedMode: parsed.data.improvedMode,
     });
     return NextResponse.json(result);
   } catch (e) {

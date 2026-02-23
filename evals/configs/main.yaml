@@ -1,0 +1,18 @@
+# Evaluation: baseline vs improved chatbot pipeline
+
+datasets:
+  - id: sample_qa
+    path: evals/datasets/sample_qa.json
+  - id: qa_200
+    path: evals/datasets/qa_200.json
+
+runs_log: app_runs/logs/runs.jsonl
+results_dir: evals/results
+
+bootstrap:
+  iterations: 1000
+  confidence_level: 0.95
+
+dry_run: false
+
+api_base: http://localhost:3000

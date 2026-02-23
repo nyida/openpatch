@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db';
 import { RunsList } from './RunsList';
+import { PageMotion } from '@/components/PageMotion';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,15 +19,15 @@ export default async function RunsPage() {
     },
   });
   return (
-    <div className="max-w-4xl mx-auto px-4 py-10">
+    <PageMotion className="max-w-4xl mx-auto px-4 py-10">
       <div className="mb-10">
-        <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Runs</h1>
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">v1</span>
+        <div className="flex items-center gap-3">
+          <h1 className="page-title">Runs</h1>
+          <span className="badge text-slate-500 bg-slate-100/90">v1</span>
         </div>
-        <p className="text-slate-600 mt-1 text-sm">Inspect traces and reliability for each run.</p>
+        <p className="page-subtitle">Inspect traces and reliability for each run.</p>
       </div>
       <RunsList runs={runs} />
-    </div>
+    </PageMotion>
   );
 }

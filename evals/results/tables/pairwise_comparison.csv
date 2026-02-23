@@ -1,0 +1,2 @@
+dataset_id,item_id,baseline_correct,improved_correct,diff_correct,baseline_invalid,improved_invalid
+sample_qa,q1,1,1,0,0,0

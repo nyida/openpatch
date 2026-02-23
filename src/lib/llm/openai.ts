@@ -26,7 +26,7 @@ export async function complete(
       role: m.role as 'system' | 'user' | 'assistant',
       content: m.content,
     })),
-    max_tokens: options.maxTokens ?? 1024,
+    max_tokens: options.maxTokens ?? 512,
     temperature: options.temperature ?? 0.3,
   });
   const choice = resp.choices[0];

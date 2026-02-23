@@ -1,0 +1,63 @@
+[
+  {
+    "base_id": "b_001",
+    "task": "factual_qa",
+    "ground_truth": "B",
+    "paraphrases": [
+      {
+        "variant_id": "b_001_v1",
+        "text": "What is the capital of France? Reply with only the letter: A) London  B) Paris  C) Berlin  D) Madrid. Format your reply as: ANSWER: <value>",
+        "factors": { "syntax": "active", "tone": "neutral", "framing": "positive" }
+      },
+      {
+        "variant_id": "b_001_v2",
+        "text": "Which city serves as the capital of France? Choose one letter: A) London  B) Paris  C) Berlin  D) Madrid. Format your reply as: ANSWER: <value>",
+        "factors": { "syntax": "passive", "tone": "neutral", "framing": "neutral" }
+      },
+      {
+        "variant_id": "b_001_v3",
+        "text": "The capital of France is: A) London  B) Paris  C) Berlin  D) Madrid. Answer with the letter only. Format: ANSWER: <value>",
+        "factors": { "syntax": "declarative", "tone": "formal", "framing": "neutral" }
+      }
+    ]
+  },
+  {
+    "base_id": "b_002",
+    "task": "factual_qa",
+    "ground_truth": "C",
+    "paraphrases": [
+      {
+        "variant_id": "b_002_v1",
+        "text": "How many sides does a triangle have? A) 2  B) 4  C) 3  D) 5. Answer: ANSWER: <value>",
+        "factors": { "syntax": "active", "tone": "neutral", "framing": "positive" }
+      },
+      {
+        "variant_id": "b_002_v2",
+        "text": "A triangle has how many sides? Options: A) 2  B) 4  C) 3  D) 5. Reply ANSWER: <value>",
+        "factors": { "syntax": "active", "tone": "formal", "framing": "neutral" }
+      },
+      {
+        "variant_id": "b_002_v3",
+        "text": "Count the number of sides of a triangle. A) 2  B) 4  C) 3  D) 5. Your answer (ANSWER: letter):",
+        "factors": { "syntax": "imperative", "tone": "neutral", "framing": "positive" }
+      }
+    ]
+  },
+  {
+    "base_id": "b_003",
+    "task": "factual_qa",
+    "ground_truth": "A",
+    "paraphrases": [
+      {
+        "variant_id": "b_003_v1",
+        "text": "What is 2 + 2? A) 4  B) 3  C) 5  D) 22. Respond with ANSWER: <value>",
+        "factors": { "syntax": "active", "tone": "neutral", "framing": "positive" }
+      },
+      {
+        "variant_id": "b_003_v2",
+        "text": "Compute 2 + 2. Choose: A) 4  B) 3  C) 5  D) 22. Answer format: ANSWER: <value>",
+        "factors": { "syntax": "imperative", "tone": "neutral", "framing": "neutral" }
+      }
+    ]
+  }
+]

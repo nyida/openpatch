@@ -12,6 +12,8 @@ export interface RunInput {
   userId?: string;
   /** Previous messages for multi-turn chat. Each turn is a full run; history is sent so the model has context. */
   conversationHistory?: { role: string; content: string }[];
+  /** When true use multi-sample + judge pipeline; when false use single-call baseline. Omitted = legacy pipeline. */
+  improvedMode?: boolean;
 }
 
 export interface RetrievalChunkData {

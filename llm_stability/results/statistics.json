@@ -1,0 +1,31 @@
+{
+  "alpha": 0.05,
+  "friedman": {
+    "p_value": NaN,
+    "statistic": NaN,
+    "valid": true
+  },
+  "pairwise_wilcoxon_bh": [
+    {
+      "model_a": "llama3.2",
+      "model_b": "mistral",
+      "reject_null_after_bh": false,
+      "wilcoxon_p_value": 1.0,
+      "wilcoxon_statistic": NaN
+    },
+    {
+      "model_a": "llama3.2",
+      "model_b": "phi3",
+      "reject_null_after_bh": false,
+      "wilcoxon_p_value": 1.0,
+      "wilcoxon_statistic": NaN
+    },
+    {
+      "model_a": "mistral",
+      "model_b": "phi3",
+      "reject_null_after_bh": false,
+      "wilcoxon_p_value": 1.0,
+      "wilcoxon_statistic": NaN
+    }
+  ]
+}

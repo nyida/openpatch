@@ -35,7 +35,7 @@ npm install
 
 # Copy env and set variables
 cp .env.example .env
-# Edit .env: DATABASE_URL, OPENAI_API_KEY, ENCRYPTION_KEY, NEXTAUTH_SECRET, VERSION_TAG
+# Edit .env: DATABASE_URL, ENCRYPTION_KEY, NEXTAUTH_SECRET, VERSION_TAG
 
 # Generate Prisma client and push schema (requires DATABASE_URL in .env)
 npm run db:generate
@@ -52,12 +52,43 @@ Open [http://localhost:3000](http://localhost:3000).
 
 **Note:** The Next.js build needs `DATABASE_URL` set (e.g. in `.env`) so Prisma can initialize. Use a real Postgres URL for dev; a placeholder is enough for `npm run build` only.
 
+### LLM: 5 models, full answers, fast
+
+**Default:** 5 candidates, 1024 tokens each (thorough answers), router/verifiers trimmed for speed. To get **full thorough responses + multiple models + extremely fast** in one go:
+
+1. **Pull small/fast models** (so each completion finishes in ~20–40s):
+2. **Run 5 Ollama instances in parallel** so all 5 candidates run at once instead of queuing:
+3. **Set `OLLAMA_URLS`** in `.env` (see below).
+
+Then total time ≈ slowest of the 5 completions (~30–60s) + judge (~5–10s) = **~40–70s** for 5 full answers.
+
+**Single instance (simplest):** Pull all 5 models; they’ll queue on one Ollama.
+
+```bash
+ollama pull llama3.2:1b && ollama pull qwen2.5:0.5b && ollama pull mistral && ollama pull phi3:mini && ollama pull gemma2:2b
+ollama pull nomic-embed-text   # optional, for RAG
+```
+
+**Five instances in parallel (faster):** Run 5 Ollama servers on ports 11434–11438, set `OLLAMA_URLS` in `.env`, and each of the 5 candidates runs on a different instance at the same time.
+
+```bash
+# In .env:
+OLLAMA_URLS="http://localhost:11434/v1,http://localhost:11435/v1,http://localhost:11436/v1,http://localhost:11437/v1,http://localhost:11438/v1"
+```
+
+One-line start: run `./scripts/start-5-ollama.sh`. Or start extra instances (e.g. in separate terminals): `OLLAMA_HOST=0.0.0.0:11435 ollama serve`, then same for 11436, 11437, 11438. Load one model per instance (e.g. instance 2 runs `ollama run qwen2.5:3b` so it’s warm).
+
+Web search (Tavily): set `TAVILY_API_KEY` when the user has no URLs/docs.
+
 ### Env vars
 
 | Variable | Description |
 |----------|-------------|
-| `OPENROUTER_API_KEY` | **Preferred.** One key for multiple models (OpenAI, Claude, etc.) via [OpenRouter](https://openrouter.ai). When set, used for all chat and embeddings. |
-| `OPENAI_API_KEY` | OpenAI API key (used only when `OPENROUTER_API_KEY` is not set) |
+| `OLLAMA_BASE_URL` | Single Ollama API base (default `http://localhost:11434/v1`). |
+| `OLLAMA_URLS` | Comma-separated URLs for 5 parallel Ollama instances (e.g. ports 11434–11438). When set, each candidate uses a different URL. |
+| `OLLAMA_MODEL` | Chat model name (default `llama3.2`). |
+| `OLLAMA_EMBED_MODEL` | Embedding model (default `nomic-embed-text`). |
+| `CANDIDATE_COUNT` | Number of candidate answers per run (default 5, max 5). |
 | `DATABASE_URL` | PostgreSQL connection string |
 | `ENCRYPTION_KEY` | 32+ char secret for encrypting stored API keys |
 | `NEXTAUTH_SECRET` | Session secret |
@@ -65,6 +96,8 @@ Open [http://localhost:3000](http://localhost:3000).
 | `VERSION_TAG` | Tag for regression comparison (e.g. `v1.0.0`) |
 | `UPLOAD_DIR` | Local upload directory (default `./uploads`) |
 | `MAX_UPLOAD_MB` | Max file size in MB (default 10) |
+| `TAVILY_ENABLED` | Set to `true` to enable web search when no docs/URLs (default off for speed). |
+| `TAVILY_API_KEY` | [Tavily](https://tavily.com) key when `TAVILY_ENABLED=true`. |
 
 ## Architecture (ASCII)
 
@@ -113,6 +146,14 @@ Open [http://localhost:3000](http://localhost:3000).
                     |  trace in DB)    |
                     +------------------+
 ```
+
+## Evaluation and research
+
+- **Run ID:** Deterministic; no time-based entropy. `runId(prompt, mode, stableContext)` with required `stableContext` (e.g. DB run UUID for chat, `dataset_id:item_id` for eval).
+- **Seeding:** Canonical `seed32(input)` and `stableKeyTemperature(temp)`; baseline and improved candidate seeds include temperature in the seed input string.
+- **Invalid format:** Parser-based: `invalid_format` is true when `parsed_answer` is missing or the chosen candidate’s raw output fails the strict ANSWER-line check (line-anchored `ANSWER : <value>`).
+- **Dry run:** Eval dry run exercises the full stack: evals.run POSTs to `/api/eval/run-one` with `dry_run: true`; the server passes `dryRun` through the call stack (no process.env) so baseline/improved use fake LLM per request and append to `app_runs/logs/runs.jsonl`.
+- **Improved selection (eval mode):** Majority vote on parsed answers (self-consistency); tie-break by latency then index; `final_answer` is the majority value. This improves accuracy on structured-answer tasks under format constraints; claims are scoped to that setting and do not imply general chatbot quality without further human eval or broader benchmarks.
 
 ## Key files
 

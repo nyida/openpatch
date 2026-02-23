@@ -1,0 +1,4 @@
+model,mean_stability,ci_lower,ci_upper,accuracy,invalid_rate
+llama3.2,1.0,1.0,1.0,1.0,0.0
+mistral,1.0,1.0,1.0,1.0,0.0
+phi3,1.0,1.0,1.0,1.0,0.0

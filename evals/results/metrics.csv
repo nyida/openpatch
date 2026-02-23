@@ -1,0 +1,3 @@
+dataset_id,item_id,mode,correct,invalid_format,latency_ms
+sample_qa,q1,baseline,1,0,0
+sample_qa,q1,improved,1,0,0

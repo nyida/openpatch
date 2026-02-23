@@ -8,10 +8,21 @@ datasource db {
 }
 
 model User {
+  id            String         @id @default(cuid())
+  email         String         @unique
+  createdAt     DateTime       @default(now())
+  runs          Run[]
+  conversations Conversation[]
+}
+
+model Conversation {
   id        String   @id @default(cuid())
-  email     String   @unique
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  title     String
+  messages  Json     // [{ role: 'user'|'assistant', content: string, runId?: string }]
   createdAt DateTime @default(now())
-  runs      Run[]
+  updatedAt DateTime @updatedAt
 }
 
 model Run {
@@ -27,6 +38,8 @@ model Run {
   costEstimate       Float?
   finalAnswer        String?
   reliability        Json?
+  urlImages          Json?
+  tavilySearchResults Json?
   attachments        Attachment[]
   retrievalChunks RetrievalChunk[]
   candidates   Candidate[]

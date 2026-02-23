@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ResearchSection } from './ResearchSection';
 import { ResearchHeader } from './ResearchHeader';
+import { PageMotion } from '@/components/PageMotion';
 
 export const metadata: Metadata = {
   title: 'Research & Methodology | OpenPatch',
@@ -10,9 +11,8 @@ export const metadata: Metadata = {
 
 export default function ResearchPage() {
   return (
-    <div className="research-page relative">
-      <div className="max-w-3xl mx-auto relative pl-6 sm:pl-8">
-        <div className="research-accent-bar" aria-hidden />
+    <PageMotion className="research-page relative">
+      <div className="max-w-3xl mx-auto relative">
         <ResearchHeader />
 
         <article className="research-article space-y-14">
@@ -20,15 +20,19 @@ export default function ResearchPage() {
             <h2 className="font-serif text-2xl font-semibold text-slate-900 mb-4">Abstract</h2>
             <p className="text-slate-700 leading-[1.75]">
               We describe the design and implementation of OpenPatch, a system that improves
-              the correctness and calibratability of language-model-generated answers by (1) routing
-              user queries by task type, (2) optionally augmenting context via retrieval over
-              user-supplied documents or URLs, (3) generating multiple candidate answers from
-              distinct model configurations in parallel, (4) running a verification layer over each
-              candidate (arithmetic, citation support, internal consistency, and safety), (5) using a
-              judge model to select a single answer with access to verifier evidence, and (6)
-              producing a structured reliability report. Every run is persisted as a full trace for
-              audit and analysis. We also maintain a fixed evaluation suite and version-tagged runs
-              for regression tracking. This document provides a detailed account of each component
+              the correctness and calibratability of language-model-generated answers. The main
+              pipeline: (1) optionally classifies the query by task type, (2) augments context via
+              retrieval over user-supplied documents or URLs (or optional web search when none are
+              provided), (3) generates multiple candidate answers from distinct model configurations
+              in parallel, (4) runs a verification layer over each candidate (arithmetic, citation
+              support, internal consistency, and safety), (5) uses a judge model to select a single
+              answer with access to verifier evidence, and (6) produces a structured reliability
+              report. Every run is persisted as a full trace for audit and analysis. The app also
+              supports baseline (single-call) and improved (multi-candidate with majority-vote or
+              heuristic selection) modes for evaluation and optional chat use. We maintain an in-app
+              evaluation suite with property-based expectations and version-tagged runs, plus an
+              external Python harness for baseline-vs-improved benchmarks with ground-truth accuracy
+              and bootstrap analysis. This document provides a detailed account of each component
               and the rationale behind our design choices.
             </p>
           </ResearchSection>
@@ -57,31 +61,40 @@ export default function ResearchPage() {
               2. Pipeline Architecture
             </h2>
             <p className="text-slate-700 leading-[1.75] mb-4">
-              The pipeline is strictly sequential after a single routing step. Given a user query
-              and optional attachments or URLs:
+              OpenPatch supports three execution modes. When the app is used without the
+              &quot;improved mode&quot; toggle, the <strong>full pipeline</strong> runs (steps
+              below). When baseline or improved mode is requested (e.g. from the UI or the eval API),
+              a shorter path is used: <strong>baseline</strong> is a single LLM call with
+              deterministic seeding (no verifiers or judge); <strong>improved</strong> generates
+              <em>N</em> candidates in parallel and selects by majority vote on parsed answers in
+              eval mode, or by a heuristic (format + safety) in chat mode—no full verification
+              layer or judge. Baseline and improved are used for the external evaluation harness
+              and for the optional in-app toggle; the full pipeline is used otherwise. Below we
+              describe the full pipeline. Given a user query and optional attachments or URLs:
             </p>
             <ol className="list-decimal list-inside space-y-2 text-slate-700 leading-[1.75] mb-4">
               <li>
-                <strong>Task classification</strong> — An LLM classifies the query into one of:
-                factual_with_sources, math_logic, code_assistance, general_writing, or unknown. This
-                can inform future prompt or verifier weighting; currently it is stored for analytics
-                and evals.
+                <strong>Task classification (optional)</strong> — When enabled (see §3), an LLM
+                classifies the query into one of: factual_with_sources, math_logic, code_assistance,
+                general_writing, or unknown. Currently this is stored for analytics and evals; it
+                can inform future prompt or verifier weighting.
               </li>
               <li>
-                <strong>Retrieval (optional)</strong> — If the user provided documents or URLs,
-                we chunk and embed them, embed the query, and retrieve the top-<em>k</em> chunks by
-                cosine similarity. These chunks are passed as context to generation and used later
-                for citation verification.
+                <strong>Retrieval (optional)</strong> — If the user provided documents or URLs, we
+                chunk and embed them, embed the query, and retrieve the top-<em>k</em> chunks by
+                cosine similarity. If no documents or URLs are given and web search is enabled
+                (Tavily), we augment context with search results. Retrieved or search context is
+                passed to generation and (when from docs/URLs) used later for citation verification.
               </li>
               <li>
-                <strong>Multi-candidate generation</strong> — We call two (or more) model
+                <strong>Multi-candidate generation</strong> — We call <em>N</em> (e.g. 2–5) model
                 configurations in parallel with the same prompt (system + conversation history +
-                user turn + retrieved context). Each produces one candidate answer.
+                user turn + context). Each produces one candidate answer.
               </li>
               <li>
-                <strong>Verification</strong> — For each candidate we run: (a) calculator
-                verifier, (b) contradiction verifier, (c) safety verifier, and (d) when retrieval
-                was used, claim extraction plus citation verifier. Results are stored per candidate.
+                <strong>Verification</strong> — For each candidate we run: (a) calculator verifier,
+                (b) contradiction verifier, (c) safety verifier, and (d) when retrieval was used,
+                claim extraction plus citation verifier. Results are stored per candidate.
               </li>
               <li>
                 <strong>Judge</strong> — A judge model receives the user request, retrieved context
@@ -96,15 +109,12 @@ export default function ResearchPage() {
                 verifications, judge decision) is persisted as a trace.
               </li>
             </ol>
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 font-mono text-sm text-slate-700 overflow-x-auto">
-              <pre className="whitespace-pre">{`Query + optional docs/URLs
-    → Classify task
-    → Retrieve (if docs/URLs) → top-k chunks
-    → Generate N candidates in parallel
-    → For each candidate: calculator, contradiction, safety, [citation if RAG]
-    → Judge(candidates + verifications) → chosen + rationale
-    → Reliability report + persist trace`}</pre>
-            </div>
+            <p className="text-slate-700 leading-[1.75]">
+              Full pipeline: Query + optional docs/URLs (or web search) → Optional classify task →
+              Retrieve / web context → top-k chunks → Generate N candidates in parallel → For each
+              candidate: calculator, contradiction, safety, [citation if RAG] → Judge(candidates +
+              verifications) → chosen + rationale → Reliability report + persist trace.
+            </p>
           </ResearchSection>
 
           <ResearchSection id="routing">
@@ -112,8 +122,13 @@ export default function ResearchPage() {
               3. Task Classification
             </h2>
             <p className="text-slate-700 leading-[1.75] mb-4">
-              We use a single LLM call to map the user input (and a flag indicating whether
-              attachments or URLs were provided) into a discrete task type. The labels are:
+              Task classification is <strong>optional</strong> and is <strong>disabled by
+              default</strong> (via <code className="research-code">SKIP_ROUTER</code>; when
+              unset, the router is skipped and the run is stored with task type
+              <code className="research-code">unknown</code>). When enabled (
+              <code className="research-code">SKIP_ROUTER=false</code>), we use a single LLM call
+              to map the user input (and a flag indicating whether attachments or URLs were
+              provided) into a discrete task type. The labels are:
             </p>
             <ul className="list-disc list-inside space-y-1 text-slate-700 leading-[1.75] mb-4">
               <li>
@@ -140,8 +155,9 @@ export default function ResearchPage() {
               (trim, lowercase, replace spaces with underscores) and fall back to
               <code className="research-code">unknown</code> (or
               <code className="research-code">factual_with_sources</code> when attachments exist
-              and parsing fails). Task type is stored on the run for analytics and for the evaluation
-              harness, which can assert expected task types or confidence levels per case.
+              and parsing fails). Task type is stored on the run for analytics and for the
+              evaluation harness, which can assert expected task types or confidence levels per
+              case.
             </p>
           </ResearchSection>
 
@@ -158,13 +174,18 @@ export default function ResearchPage() {
               <li>Embed the user query and all document chunks with the same embedding model.</li>
               <li>Compute cosine similarity between the query embedding and each chunk; sort by score and take the top <em>k</em> (e.g. 10).</li>
             </ol>
-            <p className="text-slate-700 leading-[1.75]">
+            <p className="text-slate-700 leading-[1.75] mb-4">
               The top-<em>k</em> chunks are then (1) injected into the prompt as &quot;Relevant
               context&quot; for all candidate generators, and (2) stored on the run for the
               citation verifier. The citation verifier later checks that factual claims in the
-              chosen answer are supported by these chunks (§6). Retrieval is optional; if no
-              documents or URLs are given, the pipeline runs without RAG and without citation
-              verification.
+              chosen answer are supported by these chunks (§6).
+            </p>
+            <p className="text-slate-700 leading-[1.75]">
+              Retrieval from user docs/URLs is optional; if none are given, the pipeline runs
+              without RAG and without citation verification. When <code className="research-code">TAVILY_ENABLED</code> is
+              set and no documents or URLs are supplied, we optionally augment context with web
+              search results (Tavily API). That context is passed to generation but does not
+              trigger citation verification (which applies only to retrieved document chunks).
             </p>
           </ResearchSection>
 
@@ -304,22 +325,47 @@ export default function ResearchPage() {
 
           <ResearchSection id="eval">
             <h2 className="font-serif text-2xl font-semibold text-slate-900 mb-4">
-              9. Evaluation Harness
+              9. Evaluation
             </h2>
             <p className="text-slate-700 leading-[1.75] mb-4">
-              We maintain a fixed set of evaluation cases grouped into suites. Each case has an
-              input prompt, an optional attachment reference, a task type, and optional expected
-              properties (e.g. minimum confidence level, retrieval required, minimum claims-supported
-              percentage). When we run a suite, we execute the full pipeline for each case and
-              compare the run&apos;s reliability report and outputs against the expected properties.
-              A case passes if all specified expectations are met (e.g. overall confidence at least
-              &quot;medium&quot;, or retrieval used when required). Runs are tagged with a version
-              (e.g. from an environment variable) so we can compare pass rates and metrics across
-              versions for regression tracking.
+              We use two complementary evaluation setups.
+            </p>
+            <h3 className="font-serif text-lg font-semibold text-slate-800 mt-6 mb-2">
+              9.1 In-app evaluation suite
+            </h3>
+            <p className="text-slate-700 leading-[1.75] mb-4">
+              A fixed set of evaluation cases is grouped into suites (e.g. &quot;OpenPatch Default
+              Suite&quot; with 30+ cases). Each case has an input prompt, an optional attachment
+              reference, a task type, and optional expected properties (e.g. minimum confidence
+              level, retrieval required, minimum claims-supported percentage). When we run a suite,
+              we execute the full pipeline for each case and compare the run&apos;s reliability
+              report and outputs against the expected properties. A case passes if all specified
+              expectations are met. Runs are tagged with a version (e.g. from
+              <code className="research-code">VERSION_TAG</code>) so we can compare pass rates and
+              metrics across versions for regression tracking.
+            </p>
+            <h3 className="font-serif text-lg font-semibold text-slate-800 mt-6 mb-2">
+              9.2 External benchmark harness (baseline vs improved)
+            </h3>
+            <p className="text-slate-700 leading-[1.75] mb-4">
+              A Python-based harness (<code className="research-code">evals/</code>) runs
+              baseline and improved modes against benchmark datasets. Each dataset item has a
+              prompt and ground-truth answer (with a strict <code className="research-code">ANSWER:
+              &lt;value&gt;</code> format). The harness POSTs each item to the app&apos;s eval API
+              (<code className="research-code">/api/eval/run-one</code>) once for baseline and
+              once for improved; the server runs <code className="research-code">runBaseline</code> or
+              <code className="research-code">runImproved</code> and appends a deterministic run
+              record to a log. A scoring step reads the log and computes accuracy (normalized match
+              to ground truth), invalid-format rate (missing or malformed ANSWER line), and
+              latency. An analysis step produces bootstrap confidence intervals, paired
+              comparisons, and summary tables/figures. Run IDs are deterministic (
+              <code className="research-code">runId(prompt, mode, stableContext)</code>) and
+              baseline/improved use seeded generation, so results are reproducible. Dry-run mode
+              uses a fake LLM keyed by ground truth for fast testing without live models.
             </p>
             <p className="text-slate-700 leading-[1.75]">
-              This allows us to detect regressions when we change prompts, models, or verifier logic,
-              and to compare different configurations on the same test set in a reproducible way.
+              Together, the in-app suite and the external harness let us detect regressions and
+              compare configurations (including baseline vs improved) in a reproducible way.
             </p>
           </ResearchSection>
 
@@ -347,22 +393,20 @@ export default function ResearchPage() {
           <p className="flex flex-wrap items-center gap-x-4 gap-y-1">
             <span className="font-medium text-slate-600">OpenPatch</span>
             <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">v1</span>
-            <a href="/paper.pdf" target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:text-teal-700 font-medium" title="Open: A Verification-First Architecture for Reliable Language Model Outputs">
-              Paper: <em>Open</em> (PDF)
-            </a>
           </p>
           <p>
             For implementation details and trace inspection, see{' '}
             <Link href="/runs" className="text-teal-600 hover:text-teal-700 font-medium">
               Runs
             </Link>
-            {' '}and the{' '}
+            , the in-app{' '}
             <Link href="/evals" className="text-teal-600 hover:text-teal-700 font-medium">
-              Eval harness
-            </Link>.
+              Eval suite
+            </Link>
+            , and the <code className="text-slate-600 bg-slate-100 px-1">evals/</code> harness in the repository.
           </p>
         </footer>
       </div>
-    </div>
+    </PageMotion>
   );
 }

@@ -3,11 +3,14 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
+import { useRef, useState, useLayoutEffect } from 'react';
 import { motion } from 'framer-motion';
 
 const links = [
   { href: '/', label: 'Chat' },
+  { href: '/chats', label: 'Chats' },
   { href: '/research', label: 'Research' },
+  { href: '/evaluation', label: 'Evaluation' },
   { href: '/runs', label: 'Runs' },
   { href: '/evals', label: 'Evals' },
   { href: '/settings', label: 'Settings' },
@@ -15,49 +18,61 @@ const links = [
 
 export function Nav() {
   const pathname = usePathname();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const linkRefs = useRef<(HTMLAnchorElement | null)[]>([]);
+  const activeIndex = links.findIndex((l) => l.href === pathname);
+  const [pill, setPill] = useState({ left: 0, width: 0 });
+
+  useLayoutEffect(() => {
+    const container = containerRef.current;
+    const el = activeIndex >= 0 ? linkRefs.current[activeIndex] : null;
+    if (container && el) {
+      const cr = container.getBoundingClientRect();
+      const er = el.getBoundingClientRect();
+      setPill({ left: er.left - cr.left, width: er.width });
+    }
+  }, [activeIndex, pathname]);
+
   return (
-    <motion.nav
-      className="border-b border-slate-200/80 bg-white/90 backdrop-blur-xl sticky top-0 z-10 shadow-[0_1px_0_0_rgba(0,0,0,0.04)]"
-      initial={{ y: -20, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
-    >
+    <nav className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 backdrop-blur-sm">
       <div className="container mx-auto px-4 max-w-6xl">
         <div className="flex items-center justify-between h-14">
-          <Link href="/" className="font-bold text-slate-900 text-lg tracking-tight flex items-center gap-2.5">
-            <motion.span
-              className="relative inline-flex items-center justify-center w-8 h-8 rounded-lg overflow-hidden shrink-0"
-              whileHover={{ scale: 1.05, rotate: 2 }}
-              transition={{ type: 'spring', stiffness: 400, damping: 17 }}
-            >
+          <Link href="/" className="font-semibold text-slate-900 text-base tracking-tight flex items-center gap-2.5">
+            <span className="inline-flex items-center justify-center w-8 h-8 overflow-hidden shrink-0">
               <Image src="/logo.png" alt="OpenPatch" width={32} height={32} className="object-contain" />
-            </motion.span>
-            <span className="flex items-center gap-2">
-              OpenPatch
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">v1</span>
+            </span>
+            OpenPatch
+            <span className="text-[10px] font-medium uppercase tracking-wider text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-none">
+              v1
             </span>
           </Link>
-          <div className="flex gap-0.5">
-            {links.map(({ href, label }) => {
+          <div ref={containerRef} className="flex gap-0.5 relative">
+            {activeIndex >= 0 && pill.width > 0 && (
+              <motion.span
+                className="absolute top-0 bottom-0 rounded-none bg-emerald-500/10"
+                initial={false}
+                animate={{ left: pill.left, width: pill.width }}
+                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+              />
+            )}
+            {links.map(({ href, label }, i) => {
               const isActive = pathname === href;
               return (
-                <Link key={href} href={href} className="relative px-3.5 py-2 rounded-xl text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/50">
-                  <span className={`relative z-10 ${isActive ? 'text-teal-700' : 'text-slate-600 hover:text-slate-900'}`}>
+                <Link
+                  key={href}
+                  href={href}
+                  ref={(el) => { linkRefs.current[i] = el; }}
+                  className="relative z-[1] px-3.5 py-2 rounded-none text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 focus-visible:ring-offset-2"
+                >
+                  <span className={isActive ? 'text-emerald-700' : 'text-slate-600 hover:text-slate-900'}>
                     {label}
                   </span>
-                  {isActive && (
-                    <motion.span
-                      className="absolute inset-0 rounded-xl bg-teal-500/10"
-                      layoutId="nav-pill"
-                      transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                    />
-                  )}
                 </Link>
               );
             })}
           </div>
         </div>
       </div>
-    </motion.nav>
+    </nav>
   );
 }

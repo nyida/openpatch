@@ -1,0 +1,6 @@
+{
+  "config": {
+    "config_path": "/Users/nyidagyal/Desktop/ai/llm_stability/configs/main.yaml",
+    "content": "# LLM Stability Experiment - Main Configuration\n# All model names and paths are externalized; no hardcoded values in source.\n\nmodels:\n  - name: \"llama3.2\"\n    ollama_identifier: \"llama3.2\"\n    quantization: \"default\"\n  - name: \"mistral\"\n    ollama_identifier: \"mistral\"\n    quantization: \"default\"\n  - name: \"phi3\"\n    ollama_identifier: \"phi3:mini\"\n    quantization: \"default\"\n\ndecoding:\n  temperature_values: [0.0, 0.3, 0.7]\n  top_p: 0.9\n  top_k: 40\n  repeat_penalty: 1.1\n  max_tokens: 256\n\nstochastic:\n  n_samples: 3\n\nbootstrap:\n  iterations: 1000\n  confidence_level: 0.95\n\noutput:\n  log_path: \"logs/responses.jsonl\"\n  results_path: \"results\"\n  figures_subdir: \"figures\"\n  tables_subdir: \"tables\"\n\nollama:\n  base_url: \"http://localhost:11434\"\n  timeout_seconds: 120\n  max_retries: 3\n\nreproducibility:\n  client_version: \"1.0\"\n"
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "pairwise": [
+    {
+      "ci_lower": 0.0,
+      "ci_upper": 0.0,
+      "difference": 0.0,
+      "model_a": "llama3.2",
+      "model_b": "mistral",
+      "p_value": 1.0
+    },
+    {
+      "ci_lower": 0.0,
+      "ci_upper": 0.0,
+      "difference": 0.0,
+      "model_a": "llama3.2",
+      "model_b": "phi3",
+      "p_value": 1.0
+    },
+    {
+      "ci_lower": 0.0,
+      "ci_upper": 0.0,
+      "difference": 0.0,
+      "model_a": "mistral",
+      "model_b": "phi3",
+      "p_value": 1.0
+    }
+  ],
+  "per_model": {
+    "llama3.2": {
+      "ci_lower": 1.0,
+      "ci_upper": 1.0,
+      "confidence_level": 0.95,
+      "mean": 1.0,
+      "n_iterations": 1000
+    },
+    "mistral": {
+      "ci_lower": 1.0,
+      "ci_upper": 1.0,
+      "confidence_level": 0.95,
+      "mean": 1.0,
+      "n_iterations": 1000
+    },
+    "phi3": {
+      "ci_lower": 1.0,
+      "ci_upper": 1.0,
+      "confidence_level": 0.95,
+      "mean": 1.0,
+      "n_iterations": 1000
+    }
+  }
+}

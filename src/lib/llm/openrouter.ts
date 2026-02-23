@@ -3,14 +3,23 @@
  * Use OPENROUTER_API_KEY in .env to use multiple models (OpenAI, Anthropic, etc.) with one key.
  */
 import OpenAI from 'openai';
+import * as https from 'node:https';
 import { logger } from '@/lib/logger';
 
 const OPENROUTER_BASE = 'https://openrouter.ai/api/v1';
+const OPENROUTER_AGENT = new https.Agent({ keepAlive: true });
 
 function getClient(): OpenAI | null {
   const key = process.env.OPENROUTER_API_KEY;
   if (!key) return null;
-  return new OpenAI({ apiKey: key, baseURL: OPENROUTER_BASE });
+  return new OpenAI({
+    apiKey: key,
+    baseURL: OPENROUTER_BASE,
+    // Reduce transient "Connection error" / ECONNRESET failures.
+    timeout: 30_000,
+    maxRetries: 5,
+    httpAgent: OPENROUTER_AGENT,
+  });
 }
 
 export interface CompletionOptions {
@@ -32,7 +41,7 @@ export async function complete(
       role: m.role as 'system' | 'user' | 'assistant',
       content: m.content,
     })),
-    max_tokens: options.maxTokens ?? 1024,
+    max_tokens: options.maxTokens ?? 512,
     temperature: options.temperature ?? 0.3,
   });
   const choice = resp.choices[0];

@@ -20,9 +20,9 @@ export function ReliabilityReport({ data }: { data: ReliabilityData }) {
         : 'bg-slate-100 text-slate-700 border-slate-200';
 
   return (
-    <div className="rounded-xl border border-slate-200/80 bg-slate-50/60 p-4 space-y-3 shadow-sm">
-      <div className="flex items-center gap-2 flex-wrap">
-        <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold border ${confidenceColor}`}>
+    <div className="rounded-none border border-slate-200/80 bg-slate-50/50 p-4 space-y-3">
+      <div className="flex items-center gap-2.5 flex-wrap">
+        <span className={`inline-flex items-center px-3 py-1.5 rounded-none text-xs font-semibold border ${confidenceColor}`}>
           {confidence === 'high' && '✓ High confidence'}
           {confidence === 'medium' && '○ Medium confidence'}
           {confidence === 'low' && '⚠ Low confidence'}
@@ -49,7 +49,7 @@ export function ReliabilityReport({ data }: { data: ReliabilityData }) {
         )}
       </div>
       {data.explanation && (
-        <p className="text-sm text-slate-600 leading-relaxed">{data.explanation}</p>
+        <p className="text-[13px] text-slate-600 leading-relaxed">{data.explanation}</p>
       )}
     </div>
   );

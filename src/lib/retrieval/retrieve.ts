@@ -20,7 +20,18 @@ export async function retrieve(
 ): Promise<RetrievalChunkData[]> {
   if (docChunks.length === 0) return [];
   const allTexts = [query, ...docChunks.map((c) => c.text)];
-  const embeddings = await embed(allTexts);
+  let embeddings: number[][];
+  try {
+    embeddings = await embed(allTexts);
+  } catch (e) {
+    // Embed model not installed (e.g. nomic-embed-text)? Use first N chunks in order so run still works.
+    return docChunks.slice(0, topK).map((c, i) => ({
+      docId: c.docId,
+      chunkId: String(i),
+      text: c.text,
+      score: 1,
+    }));
+  }
   const queryEmb = embeddings[0];
   const scored = docChunks.map((c, i) => ({
     docId: c.docId,

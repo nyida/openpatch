@@ -1,11 +1,7 @@
 import type { Metadata } from 'next';
-import { Inter, Source_Serif_4 } from 'next/font/google';
+import 'katex/dist/katex.min.css';
 import './globals.css';
 import { Nav } from '@/components/Nav';
-import { Footer } from '@/components/Footer';
-
-const inter = Inter({ subsets: ['latin'], variable: '--font-app' });
-const sourceSerif = Source_Serif_4({ subsets: ['latin'], variable: '--font-serif' });
 
 export const metadata: Metadata = {
   title: 'OpenPatch',
@@ -19,13 +15,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${inter.variable} ${sourceSerif.variable}`}>
-      <body className="min-h-screen flex flex-col font-sans antialiased">
+    <html lang="en">
+      <body className="min-h-screen flex flex-col font-sans antialiased text-slate-900">
         <Nav />
         <main className="flex-1 container mx-auto px-4 py-8 max-w-6xl">
           {children}
         </main>
-        <Footer />
       </body>
     </html>
   );

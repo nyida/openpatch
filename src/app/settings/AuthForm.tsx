@@ -29,7 +29,7 @@ export function AuthForm() {
         placeholder="you@example.com"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
-        className="rounded-xl border border-slate-300 px-4 py-2.5 flex-1 focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+        className="rounded-none border border-slate-300 px-4 py-2.5 flex-1 focus:ring-2 focus:ring-teal-500 focus:border-transparent"
         required
       />
       <button type="submit" disabled={loading} className="btn-primary">

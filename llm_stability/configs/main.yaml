@@ -1,0 +1,41 @@
+# LLM Stability Experiment - Main Configuration
+# All model names and paths are externalized; no hardcoded values in source.
+
+models:
+  - name: "llama3.2"
+    ollama_identifier: "llama3.2"
+    quantization: "default"
+  - name: "mistral"
+    ollama_identifier: "mistral"
+    quantization: "default"
+  - name: "phi3"
+    ollama_identifier: "phi3:mini"
+    quantization: "default"
+
+decoding:
+  temperature_values: [0.0, 0.3, 0.7]
+  top_p: 0.9
+  top_k: 40
+  repeat_penalty: 1.1
+  max_tokens: 256
+
+stochastic:
+  n_samples: 3
+
+bootstrap:
+  iterations: 1000
+  confidence_level: 0.95
+
+output:
+  log_path: "logs/responses.jsonl"
+  results_path: "results"
+  figures_subdir: "figures"
+  tables_subdir: "tables"
+
+ollama:
+  base_url: "http://localhost:11434"
+  timeout_seconds: 120
+  max_retries: 3
+
+reproducibility:
+  client_version: "1.0"

@@ -48,8 +48,14 @@ export async function verifyCitations(
   }
   const chunkTexts = chunks.map((ch) => ch.text);
   const claimTexts = claims.map((c) => c.text);
-  const chunkEmbs = await embed(chunkTexts);
-  const claimEmbs = await embed(claimTexts);
+  let chunkEmbs: number[][] | null = null;
+  let claimEmbs: number[][] | null = null;
+  try {
+    chunkEmbs = await embed(chunkTexts);
+    claimEmbs = await embed(claimTexts);
+  } catch {
+    // Embed model not available; use overlap only
+  }
 
   function cosine(a: number[], b: number[]): number {
     let dot = 0, na = 0, nb = 0;
@@ -68,9 +74,11 @@ export async function verifyCitations(
     let bestSim = 0;
     let bestOverlap = 0;
     for (let j = 0; j < chunks.length; j++) {
-      const sim = cosine(claimEmbs[i], chunkEmbs[j]);
       const ov = overlapScore(claim.text, chunks[j].text);
-      if (sim > bestSim) bestSim = sim;
+      if (chunkEmbs && claimEmbs && chunkEmbs[j] && claimEmbs[i]) {
+        const sim = cosine(claimEmbs[i], chunkEmbs[j]);
+        if (sim > bestSim) bestSim = sim;
+      }
       if (ov > bestOverlap) bestOverlap = ov;
     }
     const supported = bestSim >= 0.7 || bestOverlap >= 0.6;

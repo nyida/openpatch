@@ -1,0 +1,1002 @@
+[
+{
+"id": "math_0",
+"prompt": "What is 1 + 1? Reply with only: ANSWER: <value>",
+"ground_truth": "2"
+},
+{
+"id": "math_1",
+"prompt": "What is 2 + 2? Reply with only: ANSWER: <value>",
+"ground_truth": "4"
+},
+{
+"id": "math_2",
+"prompt": "What is 3 + 3? Reply with only: ANSWER: <value>",
+"ground_truth": "6"
+},
+{
+"id": "math_3",
+"prompt": "What is 4 + 4? Reply with only: ANSWER: <value>",
+"ground_truth": "8"
+},
+{
+"id": "math_4",
+"prompt": "What is 5 + 5? Reply with only: ANSWER: <value>",
+"ground_truth": "10"
+},
+{
+"id": "math_5",
+"prompt": "What is 6 + 6? Reply with only: ANSWER: <value>",
+"ground_truth": "12"
+},
+{
+"id": "math_6",
+"prompt": "What is 7 + 7? Reply with only: ANSWER: <value>",
+"ground_truth": "14"
+},
+{
+"id": "math_7",
+"prompt": "What is 8 + 1? Reply with only: ANSWER: <value>",
+"ground_truth": "9"
+},
+{
+"id": "math_8",
+"prompt": "What is 9 + 2? Reply with only: ANSWER: <value>",
+"ground_truth": "11"
+},
+{
+"id": "math_9",
+"prompt": "What is 10 + 3? Reply with only: ANSWER: <value>",
+"ground_truth": "13"
+},
+{
+"id": "math_10",
+"prompt": "What is 1 + 4? Reply with only: ANSWER: <value>",
+"ground_truth": "5"
+},
+{
+"id": "math_11",
+"prompt": "What is 2 + 5? Reply with only: ANSWER: <value>",
+"ground_truth": "7"
+},
+{
+"id": "math_12",
+"prompt": "What is 3 + 6? Reply with only: ANSWER: <value>",
+"ground_truth": "9"
+},
+{
+"id": "math_13",
+"prompt": "What is 4 + 7? Reply with only: ANSWER: <value>",
+"ground_truth": "11"
+},
+{
+"id": "math_14",
+"prompt": "What is 5 + 1? Reply with only: ANSWER: <value>",
+"ground_truth": "6"
+},
+{
+"id": "math_15",
+"prompt": "What is 6 + 2? Reply with only: ANSWER: <value>",
+"ground_truth": "8"
+},
+{
+"id": "math_16",
+"prompt": "What is 7 + 3? Reply with only: ANSWER: <value>",
+"ground_truth": "10"
+},
+{
+"id": "math_17",
+"prompt": "What is 8 + 4? Reply with only: ANSWER: <value>",
+"ground_truth": "12"
+},
+{
+"id": "math_18",
+"prompt": "What is 9 + 5? Reply with only: ANSWER: <value>",
+"ground_truth": "14"
+},
+{
+"id": "math_19",
+"prompt": "What is 10 + 6? Reply with only: ANSWER: <value>",
+"ground_truth": "16"
+},
+{
+"id": "math_20",
+"prompt": "What is 1 + 7? Reply with only: ANSWER: <value>",
+"ground_truth": "8"
+},
+{
+"id": "math_21",
+"prompt": "What is 2 + 1? Reply with only: ANSWER: <value>",
+"ground_truth": "3"
+},
+{
+"id": "math_22",
+"prompt": "What is 3 + 2? Reply with only: ANSWER: <value>",
+"ground_truth": "5"
+},
+{
+"id": "math_23",
+"prompt": "What is 4 + 3? Reply with only: ANSWER: <value>",
+"ground_truth": "7"
+},
+{
+"id": "math_24",
+"prompt": "What is 5 + 4? Reply with only: ANSWER: <value>",
+"ground_truth": "9"
+},
+{
+"id": "math_25",
+"prompt": "What is 6 + 5? Reply with only: ANSWER: <value>",
+"ground_truth": "11"
+},
+{
+"id": "math_26",
+"prompt": "What is 7 + 6? Reply with only: ANSWER: <value>",
+"ground_truth": "13"
+},
+{
+"id": "math_27",
+"prompt": "What is 8 + 7? Reply with only: ANSWER: <value>",
+"ground_truth": "15"
+},
+{
+"id": "math_28",
+"prompt": "What is 9 + 1? Reply with only: ANSWER: <value>",
+"ground_truth": "10"
+},
+{
+"id": "math_29",
+"prompt": "What is 10 + 2? Reply with only: ANSWER: <value>",
+"ground_truth": "12"
+},
+{
+"id": "math_30",
+"prompt": "What is 1 + 3? Reply with only: ANSWER: <value>",
+"ground_truth": "4"
+},
+{
+"id": "math_31",
+"prompt": "What is 2 + 4? Reply with only: ANSWER: <value>",
+"ground_truth": "6"
+},
+{
+"id": "math_32",
+"prompt": "What is 3 + 5? Reply with only: ANSWER: <value>",
+"ground_truth": "8"
+},
+{
+"id": "math_33",
+"prompt": "What is 4 + 6? Reply with only: ANSWER: <value>",
+"ground_truth": "10"
+},
+{
+"id": "math_34",
+"prompt": "What is 5 + 7? Reply with only: ANSWER: <value>",
+"ground_truth": "12"
+},
+{
+"id": "math_35",
+"prompt": "What is 6 + 1? Reply with only: ANSWER: <value>",
+"ground_truth": "7"
+},
+{
+"id": "math_36",
+"prompt": "What is 7 + 2? Reply with only: ANSWER: <value>",
+"ground_truth": "9"
+},
+{
+"id": "math_37",
+"prompt": "What is 8 + 3? Reply with only: ANSWER: <value>",
+"ground_truth": "11"
+},
+{
+"id": "math_38",
+"prompt": "What is 9 + 4? Reply with only: ANSWER: <value>",
+"ground_truth": "13"
+},
+{
+"id": "math_39",
+"prompt": "What is 10 + 5? Reply with only: ANSWER: <value>",
+"ground_truth": "15"
+},
+{
+"id": "math_40",
+"prompt": "What is 1 + 6? Reply with only: ANSWER: <value>",
+"ground_truth": "7"
+},
+{
+"id": "math_41",
+"prompt": "What is 2 + 7? Reply with only: ANSWER: <value>",
+"ground_truth": "9"
+},
+{
+"id": "math_42",
+"prompt": "What is 3 + 1? Reply with only: ANSWER: <value>",
+"ground_truth": "4"
+},
+{
+"id": "math_43",
+"prompt": "What is 4 + 2? Reply with only: ANSWER: <value>",
+"ground_truth": "6"
+},
+{
+"id": "math_44",
+"prompt": "What is 5 + 3? Reply with only: ANSWER: <value>",
+"ground_truth": "8"
+},
+{
+"id": "math_45",
+"prompt": "What is 6 + 4? Reply with only: ANSWER: <value>",
+"ground_truth": "10"
+},
+{
+"id": "math_46",
+"prompt": "What is 7 + 5? Reply with only: ANSWER: <value>",
+"ground_truth": "12"
+},
+{
+"id": "math_47",
+"prompt": "What is 8 + 6? Reply with only: ANSWER: <value>",
+"ground_truth": "14"
+},
+{
+"id": "math_48",
+"prompt": "What is 9 + 7? Reply with only: ANSWER: <value>",
+"ground_truth": "16"
+},
+{
+"id": "math_49",
+"prompt": "What is 10 + 1? Reply with only: ANSWER: <value>",
+"ground_truth": "11"
+},
+{
+"id": "math_50",
+"prompt": "What is 1 + 2? Reply with only: ANSWER: <value>",
+"ground_truth": "3"
+},
+{
+"id": "math_51",
+"prompt": "What is 2 + 3? Reply with only: ANSWER: <value>",
+"ground_truth": "5"
+},
+{
+"id": "math_52",
+"prompt": "What is 3 + 4? Reply with only: ANSWER: <value>",
+"ground_truth": "7"
+},
+{
+"id": "math_53",
+"prompt": "What is 4 + 5? Reply with only: ANSWER: <value>",
+"ground_truth": "9"
+},
+{
+"id": "math_54",
+"prompt": "What is 5 + 6? Reply with only: ANSWER: <value>",
+"ground_truth": "11"
+},
+{
+"id": "math_55",
+"prompt": "What is 6 + 7? Reply with only: ANSWER: <value>",
+"ground_truth": "13"
+},
+{
+"id": "math_56",
+"prompt": "What is 7 + 1? Reply with only: ANSWER: <value>",
+"ground_truth": "8"
+},
+{
+"id": "math_57",
+"prompt": "What is 8 + 2? Reply with only: ANSWER: <value>",
+"ground_truth": "10"
+},
+{
+"id": "math_58",
+"prompt": "What is 9 + 3? Reply with only: ANSWER: <value>",
+"ground_truth": "12"
+},
+{
+"id": "math_59",
+"prompt": "What is 10 + 4? Reply with only: ANSWER: <value>",
+"ground_truth": "14"
+},
+{
+"id": "math_60",
+"prompt": "What is 1 + 5? Reply with only: ANSWER: <value>",
+"ground_truth": "6"
+},
+{
+"id": "math_61",
+"prompt": "What is 2 + 6? Reply with only: ANSWER: <value>",
+"ground_truth": "8"
+},
+{
+"id": "math_62",
+"prompt": "What is 3 + 7? Reply with only: ANSWER: <value>",
+"ground_truth": "10"
+},
+{
+"id": "math_63",
+"prompt": "What is 4 + 1? Reply with only: ANSWER: <value>",
+"ground_truth": "5"
+},
+{
+"id": "math_64",
+"prompt": "What is 5 + 2? Reply with only: ANSWER: <value>",
+"ground_truth": "7"
+},
+{
+"id": "math_65",
+"prompt": "What is 6 + 3? Reply with only: ANSWER: <value>",
+"ground_truth": "9"
+},
+{
+"id": "math_66",
+"prompt": "What is 7 + 4? Reply with only: ANSWER: <value>",
+"ground_truth": "11"
+},
+{
+"id": "math_67",
+"prompt": "What is 8 + 5? Reply with only: ANSWER: <value>",
+"ground_truth": "13"
+},
+{
+"id": "math_68",
+"prompt": "What is 9 + 6? Reply with only: ANSWER: <value>",
+"ground_truth": "15"
+},
+{
+"id": "math_69",
+"prompt": "What is 10 + 7? Reply with only: ANSWER: <value>",
+"ground_truth": "17"
+},
+{
+"id": "math_70",
+"prompt": "What is 1 + 1? Reply with only: ANSWER: <value>",
+"ground_truth": "2"
+},
+{
+"id": "math_71",
+"prompt": "What is 2 + 2? Reply with only: ANSWER: <value>",
+"ground_truth": "4"
+},
+{
+"id": "math_72",
+"prompt": "What is 3 + 3? Reply with only: ANSWER: <value>",
+"ground_truth": "6"
+},
+{
+"id": "math_73",
+"prompt": "What is 4 + 4? Reply with only: ANSWER: <value>",
+"ground_truth": "8"
+},
+{
+"id": "math_74",
+"prompt": "What is 5 + 5? Reply with only: ANSWER: <value>",
+"ground_truth": "10"
+},
+{
+"id": "math_75",
+"prompt": "What is 6 + 6? Reply with only: ANSWER: <value>",
+"ground_truth": "12"
+},
+{
+"id": "math_76",
+"prompt": "What is 7 + 7? Reply with only: ANSWER: <value>",
+"ground_truth": "14"
+},
+{
+"id": "math_77",
+"prompt": "What is 8 + 1? Reply with only: ANSWER: <value>",
+"ground_truth": "9"
+},
+{
+"id": "math_78",
+"prompt": "What is 9 + 2? Reply with only: ANSWER: <value>",
+"ground_truth": "11"
+},
+{
+"id": "math_79",
+"prompt": "What is 10 + 3? Reply with only: ANSWER: <value>",
+"ground_truth": "13"
+},
+{
+"id": "math_80",
+"prompt": "What is 1 + 4? Reply with only: ANSWER: <value>",
+"ground_truth": "5"
+},
+{
+"id": "math_81",
+"prompt": "What is 2 + 5? Reply with only: ANSWER: <value>",
+"ground_truth": "7"
+},
+{
+"id": "math_82",
+"prompt": "What is 3 + 6? Reply with only: ANSWER: <value>",
+"ground_truth": "9"
+},
+{
+"id": "math_83",
+"prompt": "What is 4 + 7? Reply with only: ANSWER: <value>",
+"ground_truth": "11"
+},
+{
+"id": "math_84",
+"prompt": "What is 5 + 1? Reply with only: ANSWER: <value>",
+"ground_truth": "6"
+},
+{
+"id": "math_85",
+"prompt": "What is 6 + 2? Reply with only: ANSWER: <value>",
+"ground_truth": "8"
+},
+{
+"id": "math_86",
+"prompt": "What is 7 + 3? Reply with only: ANSWER: <value>",
+"ground_truth": "10"
+},
+{
+"id": "math_87",
+"prompt": "What is 8 + 4? Reply with only: ANSWER: <value>",
+"ground_truth": "12"
+},
+{
+"id": "math_88",
+"prompt": "What is 9 + 5? Reply with only: ANSWER: <value>",
+"ground_truth": "14"
+},
+{
+"id": "math_89",
+"prompt": "What is 10 + 6? Reply with only: ANSWER: <value>",
+"ground_truth": "16"
+},
+{
+"id": "math_90",
+"prompt": "What is 1 + 7? Reply with only: ANSWER: <value>",
+"ground_truth": "8"
+},
+{
+"id": "math_91",
+"prompt": "What is 2 + 1? Reply with only: ANSWER: <value>",
+"ground_truth": "3"
+},
+{
+"id": "math_92",
+"prompt": "What is 3 + 2? Reply with only: ANSWER: <value>",
+"ground_truth": "5"
+},
+{
+"id": "math_93",
+"prompt": "What is 4 + 3? Reply with only: ANSWER: <value>",
+"ground_truth": "7"
+},
+{
+"id": "math_94",
+"prompt": "What is 5 + 4? Reply with only: ANSWER: <value>",
+"ground_truth": "9"
+},
+{
+"id": "math_95",
+"prompt": "What is 6 + 5? Reply with only: ANSWER: <value>",
+"ground_truth": "11"
+},
+{
+"id": "math_96",
+"prompt": "What is 7 + 6? Reply with only: ANSWER: <value>",
+"ground_truth": "13"
+},
+{
+"id": "math_97",
+"prompt": "What is 8 + 7? Reply with only: ANSWER: <value>",
+"ground_truth": "15"
+},
+{
+"id": "math_98",
+"prompt": "What is 9 + 1? Reply with only: ANSWER: <value>",
+"ground_truth": "10"
+},
+{
+"id": "math_99",
+"prompt": "What is 10 + 2? Reply with only: ANSWER: <value>",
+"ground_truth": "12"
+},
+{
+"id": "mult_0",
+"prompt": "What is 1 * 1? Reply with only: ANSWER: <value>",
+"ground_truth": "1"
+},
+{
+"id": "mult_1",
+"prompt": "What is 2 * 2? Reply with only: ANSWER: <value>",
+"ground_truth": "4"
+},
+{
+"id": "mult_2",
+"prompt": "What is 3 * 3? Reply with only: ANSWER: <value>",
+"ground_truth": "9"
+},
+{
+"id": "mult_3",
+"prompt": "What is 4 * 4? Reply with only: ANSWER: <value>",
+"ground_truth": "16"
+},
+{
+"id": "mult_4",
+"prompt": "What is 5 * 5? Reply with only: ANSWER: <value>",
+"ground_truth": "25"
+},
+{
+"id": "mult_5",
+"prompt": "What is 1 * 6? Reply with only: ANSWER: <value>",
+"ground_truth": "6"
+},
+{
+"id": "mult_6",
+"prompt": "What is 2 * 1? Reply with only: ANSWER: <value>",
+"ground_truth": "2"
+},
+{
+"id": "mult_7",
+"prompt": "What is 3 * 2? Reply with only: ANSWER: <value>",
+"ground_truth": "6"
+},
+{
+"id": "mult_8",
+"prompt": "What is 4 * 3? Reply with only: ANSWER: <value>",
+"ground_truth": "12"
+},
+{
+"id": "mult_9",
+"prompt": "What is 5 * 4? Reply with only: ANSWER: <value>",
+"ground_truth": "20"
+},
+{
+"id": "mult_10",
+"prompt": "What is 1 * 5? Reply with only: ANSWER: <value>",
+"ground_truth": "5"
+},
+{
+"id": "mult_11",
+"prompt": "What is 2 * 6? Reply with only: ANSWER: <value>",
+"ground_truth": "12"
+},
+{
+"id": "mult_12",
+"prompt": "What is 3 * 1? Reply with only: ANSWER: <value>",
+"ground_truth": "3"
+},
+{
+"id": "mult_13",
+"prompt": "What is 4 * 2? Reply with only: ANSWER: <value>",
+"ground_truth": "8"
+},
+{
+"id": "mult_14",
+"prompt": "What is 5 * 3? Reply with only: ANSWER: <value>",
+"ground_truth": "15"
+},
+{
+"id": "mult_15",
+"prompt": "What is 1 * 4? Reply with only: ANSWER: <value>",
+"ground_truth": "4"
+},
+{
+"id": "mult_16",
+"prompt": "What is 2 * 5? Reply with only: ANSWER: <value>",
+"ground_truth": "10"
+},
+{
+"id": "mult_17",
+"prompt": "What is 3 * 6? Reply with only: ANSWER: <value>",
+"ground_truth": "18"
+},
+{
+"id": "mult_18",
+"prompt": "What is 4 * 1? Reply with only: ANSWER: <value>",
+"ground_truth": "4"
+},
+{
+"id": "mult_19",
+"prompt": "What is 5 * 2? Reply with only: ANSWER: <value>",
+"ground_truth": "10"
+},
+{
+"id": "mult_20",
+"prompt": "What is 1 * 3? Reply with only: ANSWER: <value>",
+"ground_truth": "3"
+},
+{
+"id": "mult_21",
+"prompt": "What is 2 * 4? Reply with only: ANSWER: <value>",
+"ground_truth": "8"
+},
+{
+"id": "mult_22",
+"prompt": "What is 3 * 5? Reply with only: ANSWER: <value>",
+"ground_truth": "15"
+},
+{
+"id": "mult_23",
+"prompt": "What is 4 * 6? Reply with only: ANSWER: <value>",
+"ground_truth": "24"
+},
+{
+"id": "mult_24",
+"prompt": "What is 5 * 1? Reply with only: ANSWER: <value>",
+"ground_truth": "5"
+},
+{
+"id": "mult_25",
+"prompt": "What is 1 * 2? Reply with only: ANSWER: <value>",
+"ground_truth": "2"
+},
+{
+"id": "mult_26",
+"prompt": "What is 2 * 3? Reply with only: ANSWER: <value>",
+"ground_truth": "6"
+},
+{
+"id": "mult_27",
+"prompt": "What is 3 * 4? Reply with only: ANSWER: <value>",
+"ground_truth": "12"
+},
+{
+"id": "mult_28",
+"prompt": "What is 4 * 5? Reply with only: ANSWER: <value>",
+"ground_truth": "20"
+},
+{
+"id": "mult_29",
+"prompt": "What is 5 * 6? Reply with only: ANSWER: <value>",
+"ground_truth": "30"
+},
+{
+"id": "mult_30",
+"prompt": "What is 1 * 1? Reply with only: ANSWER: <value>",
+"ground_truth": "1"
+},
+{
+"id": "mult_31",
+"prompt": "What is 2 * 2? Reply with only: ANSWER: <value>",
+"ground_truth": "4"
+},
+{
+"id": "mult_32",
+"prompt": "What is 3 * 3? Reply with only: ANSWER: <value>",
+"ground_truth": "9"
+},
+{
+"id": "mult_33",
+"prompt": "What is 4 * 4? Reply with only: ANSWER: <value>",
+"ground_truth": "16"
+},
+{
+"id": "mult_34",
+"prompt": "What is 5 * 5? Reply with only: ANSWER: <value>",
+"ground_truth": "25"
+},
+{
+"id": "mult_35",
+"prompt": "What is 1 * 6? Reply with only: ANSWER: <value>",
+"ground_truth": "6"
+},
+{
+"id": "mult_36",
+"prompt": "What is 2 * 1? Reply with only: ANSWER: <value>",
+"ground_truth": "2"
+},
+{
+"id": "mult_37",
+"prompt": "What is 3 * 2? Reply with only: ANSWER: <value>",
+"ground_truth": "6"
+},
+{
+"id": "mult_38",
+"prompt": "What is 4 * 3? Reply with only: ANSWER: <value>",
+"ground_truth": "12"
+},
+{
+"id": "mult_39",
+"prompt": "What is 5 * 4? Reply with only: ANSWER: <value>",
+"ground_truth": "20"
+},
+{
+"id": "mult_40",
+"prompt": "What is 1 * 5? Reply with only: ANSWER: <value>",
+"ground_truth": "5"
+},
+{
+"id": "mult_41",
+"prompt": "What is 2 * 6? Reply with only: ANSWER: <value>",
+"ground_truth": "12"
+},
+{
+"id": "mult_42",
+"prompt": "What is 3 * 1? Reply with only: ANSWER: <value>",
+"ground_truth": "3"
+},
+{
+"id": "mult_43",
+"prompt": "What is 4 * 2? Reply with only: ANSWER: <value>",
+"ground_truth": "8"
+},
+{
+"id": "mult_44",
+"prompt": "What is 5 * 3? Reply with only: ANSWER: <value>",
+"ground_truth": "15"
+},
+{
+"id": "mult_45",
+"prompt": "What is 1 * 4? Reply with only: ANSWER: <value>",
+"ground_truth": "4"
+},
+{
+"id": "mult_46",
+"prompt": "What is 2 * 5? Reply with only: ANSWER: <value>",
+"ground_truth": "10"
+},
+{
+"id": "mult_47",
+"prompt": "What is 3 * 6? Reply with only: ANSWER: <value>",
+"ground_truth": "18"
+},
+{
+"id": "mult_48",
+"prompt": "What is 4 * 1? Reply with only: ANSWER: <value>",
+"ground_truth": "4"
+},
+{
+"id": "mult_49",
+"prompt": "What is 5 * 2? Reply with only: ANSWER: <value>",
+"ground_truth": "10"
+},
+{
+"id": "cap_0",
+"prompt": "What is the capital of France? Reply with only: ANSWER: <value>",
+"ground_truth": "Paris"
+},
+{
+"id": "cap_1",
+"prompt": "What is the capital of Germany? Reply with only: ANSWER: <value>",
+"ground_truth": "Berlin"
+},
+{
+"id": "cap_2",
+"prompt": "What is the capital of Japan? Reply with only: ANSWER: <value>",
+"ground_truth": "Tokyo"
+},
+{
+"id": "cap_3",
+"prompt": "What is the capital of Italy? Reply with only: ANSWER: <value>",
+"ground_truth": "Rome"
+},
+{
+"id": "cap_4",
+"prompt": "What is the capital of Spain? Reply with only: ANSWER: <value>",
+"ground_truth": "Madrid"
+},
+{
+"id": "cap_5",
+"prompt": "What is the capital of UK? Reply with only: ANSWER: <value>",
+"ground_truth": "London"
+},
+{
+"id": "cap_6",
+"prompt": "What is the capital of Russia? Reply with only: ANSWER: <value>",
+"ground_truth": "Moscow"
+},
+{
+"id": "cap_7",
+"prompt": "What is the capital of China? Reply with only: ANSWER: <value>",
+"ground_truth": "Beijing"
+},
+{
+"id": "cap_8",
+"prompt": "What is the capital of India? Reply with only: ANSWER: <value>",
+"ground_truth": "New Delhi"
+},
+{
+"id": "cap_9",
+"prompt": "What is the capital of Brazil? Reply with only: ANSWER: <value>",
+"ground_truth": "Brasilia"
+},
+{
+"id": "cap_10",
+"prompt": "What is the capital of France? Reply with only: ANSWER: <value>",
+"ground_truth": "Paris"
+},
+{
+"id": "cap_11",
+"prompt": "What is the capital of Germany? Reply with only: ANSWER: <value>",
+"ground_truth": "Berlin"
+},
+{
+"id": "cap_12",
+"prompt": "What is the capital of Japan? Reply with only: ANSWER: <value>",
+"ground_truth": "Tokyo"
+},
+{
+"id": "cap_13",
+"prompt": "What is the capital of Italy? Reply with only: ANSWER: <value>",
+"ground_truth": "Rome"
+},
+{
+"id": "cap_14",
+"prompt": "What is the capital of Spain? Reply with only: ANSWER: <value>",
+"ground_truth": "Madrid"
+},
+{
+"id": "cap_15",
+"prompt": "What is the capital of UK? Reply with only: ANSWER: <value>",
+"ground_truth": "London"
+},
+{
+"id": "cap_16",
+"prompt": "What is the capital of Russia? Reply with only: ANSWER: <value>",
+"ground_truth": "Moscow"
+},
+{
+"id": "cap_17",
+"prompt": "What is the capital of China? Reply with only: ANSWER: <value>",
+"ground_truth": "Beijing"
+},
+{
+"id": "cap_18",
+"prompt": "What is the capital of India? Reply with only: ANSWER: <value>",
+"ground_truth": "New Delhi"
+},
+{
+"id": "cap_19",
+"prompt": "What is the capital of Brazil? Reply with only: ANSWER: <value>",
+"ground_truth": "Brasilia"
+},
+{
+"id": "cap_20",
+"prompt": "What is the capital of France? Reply with only: ANSWER: <value>",
+"ground_truth": "Paris"
+},
+{
+"id": "cap_21",
+"prompt": "What is the capital of Germany? Reply with only: ANSWER: <value>",
+"ground_truth": "Berlin"
+},
+{
+"id": "cap_22",
+"prompt": "What is the capital of Japan? Reply with only: ANSWER: <value>",
+"ground_truth": "Tokyo"
+},
+{
+"id": "cap_23",
+"prompt": "What is the capital of Italy? Reply with only: ANSWER: <value>",
+"ground_truth": "Rome"
+},
+{
+"id": "cap_24",
+"prompt": "What is the capital of Spain? Reply with only: ANSWER: <value>",
+"ground_truth": "Madrid"
+},
+{
+"id": "cap_25",
+"prompt": "What is the capital of UK? Reply with only: ANSWER: <value>",
+"ground_truth": "London"
+},
+{
+"id": "cap_26",
+"prompt": "What is the capital of Russia? Reply with only: ANSWER: <value>",
+"ground_truth": "Moscow"
+},
+{
+"id": "cap_27",
+"prompt": "What is the capital of China? Reply with only: ANSWER: <value>",
+"ground_truth": "Beijing"
+},
+{
+"id": "cap_28",
+"prompt": "What is the capital of India? Reply with only: ANSWER: <value>",
+"ground_truth": "New Delhi"
+},
+{
+"id": "cap_29",
+"prompt": "What is the capital of Brazil? Reply with only: ANSWER: <value>",
+"ground_truth": "Brasilia"
+},
+{
+"id": "cap_30",
+"prompt": "What is the capital of France? Reply with only: ANSWER: <value>",
+"ground_truth": "Paris"
+},
+{
+"id": "cap_31",
+"prompt": "What is the capital of Germany? Reply with only: ANSWER: <value>",
+"ground_truth": "Berlin"
+},
+{
+"id": "cap_32",
+"prompt": "What is the capital of Japan? Reply with only: ANSWER: <value>",
+"ground_truth": "Tokyo"
+},
+{
+"id": "cap_33",
+"prompt": "What is the capital of Italy? Reply with only: ANSWER: <value>",
+"ground_truth": "Rome"
+},
+{
+"id": "cap_34",
+"prompt": "What is the capital of Spain? Reply with only: ANSWER: <value>",
+"ground_truth": "Madrid"
+},
+{
+"id": "cap_35",
+"prompt": "What is the capital of UK? Reply with only: ANSWER: <value>",
+"ground_truth": "London"
+},
+{
+"id": "cap_36",
+"prompt": "What is the capital of Russia? Reply with only: ANSWER: <value>",
+"ground_truth": "Moscow"
+},
+{
+"id": "cap_37",
+"prompt": "What is the capital of China? Reply with only: ANSWER: <value>",
+"ground_truth": "Beijing"
+},
+{
+"id": "cap_38",
+"prompt": "What is the capital of India? Reply with only: ANSWER: <value>",
+"ground_truth": "New Delhi"
+},
+{
+"id": "cap_39",
+"prompt": "What is the capital of Brazil? Reply with only: ANSWER: <value>",
+"ground_truth": "Brasilia"
+},
+{
+"id": "cap_40",
+"prompt": "What is the capital of France? Reply with only: ANSWER: <value>",
+"ground_truth": "Paris"
+},
+{
+"id": "cap_41",
+"prompt": "What is the capital of Germany? Reply with only: ANSWER: <value>",
+"ground_truth": "Berlin"
+},
+{
+"id": "cap_42",
+"prompt": "What is the capital of Japan? Reply with only: ANSWER: <value>",
+"ground_truth": "Tokyo"
+},
+{
+"id": "cap_43",
+"prompt": "What is the capital of Italy? Reply with only: ANSWER: <value>",
+"ground_truth": "Rome"
+},
+{
+"id": "cap_44",
+"prompt": "What is the capital of Spain? Reply with only: ANSWER: <value>",
+"ground_truth": "Madrid"
+},
+{
+"id": "cap_45",
+"prompt": "What is the capital of UK? Reply with only: ANSWER: <value>",
+"ground_truth": "London"
+},
+{
+"id": "cap_46",
+"prompt": "What is the capital of Russia? Reply with only: ANSWER: <value>",
+"ground_truth": "Moscow"
+},
+{
+"id": "cap_47",
+"prompt": "What is the capital of China? Reply with only: ANSWER: <value>",
+"ground_truth": "Beijing"
+},
+{
+"id": "cap_48",
+"prompt": "What is the capital of India? Reply with only: ANSWER: <value>",
+"ground_truth": "New Delhi"
+},
+{
+"id": "cap_49",
+"prompt": "What is the capital of Brazil? Reply with only: ANSWER: <value>",
+"ground_truth": "Brasilia"
+}
+]

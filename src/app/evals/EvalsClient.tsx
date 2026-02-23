@@ -72,7 +72,7 @@ export function EvalsClient({
         {versions.length === 0 ? (
           <p className="text-slate-500 text-sm">Run a suite to see version stats.</p>
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-slate-200">
+          <div className="overflow-x-auto rounded-none border border-slate-200">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-slate-50 text-left">
@@ -104,7 +104,7 @@ export function EvalsClient({
       {recentResults.length > 0 && (
         <div className="card">
           <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Recent results</h2>
-          <div className="overflow-auto max-h-60 rounded-xl border border-slate-200">
+          <div className="overflow-auto max-h-60 rounded-none border border-slate-200">
             <table className="w-full text-sm">
               <thead className="bg-slate-50 sticky top-0">
                 <tr className="text-left">
