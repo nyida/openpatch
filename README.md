@@ -118,26 +118,26 @@ Web search (Tavily): set `TAVILY_ENABLED=true` and `TAVILY_API_KEY` when the use
          +-------------------+-------------------+
          v                   v                   v
   +-------------+   +----------------+   +----------------+
-  |   ROUTER     |   |   RETRIEVE     |   |   GENERATE     |
-  | (optional;   |   | (RAG or Tavily)|   | (2–5 candidates)|
-  |  task type)  |   | (top-k chunks) |   |                |
+  |   ROUTER    |   |   RETRIEVE     |   |   GENERATE     |
+  | (optional;  |   | (RAG or Tavily)|   |(2–5 candidates)|
+  |  task type) |   | (top-k chunks) |   |                |
   +-------------+   +----------------+   +----------------+
          |                   |                   |
          +-------------------+-------------------+
                              |
                              v
-  +------------------------------------------------------------------+
-  |  VERIFY (per candidate)                                          |
-  |  - Claim extraction -> Citation (vs retrieved context)          |
-  |  - Calculator (arithmetic)                                       |
-  |  - Contradiction (internal consistency)                           |
-  |  - Safety (refusal on disallowed content)                         |
-  +------------------------------------------------------------------+
++------------------------------------------------------------------+
+|   VERIFY (per candidate)                                         |
+|   - Claim extraction -> Citation (vs retrieved context)          |
+|   - Calculator (arithmetic)                                      |
+|   - Contradiction (internal consistency)                         |
+|   - Safety (refusal on disallowed content)                       |
++------------------------------------------------------------------+
                              |
                              v
                     +------------------+
                     |  JUDGE           |
-                    | (rubric + evidence|
+                    |(rubric + evidence|
                     |  -> chosen +     |
                     |   reliability)   |
                     +--------+---------+
