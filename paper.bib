@@ -1,1 +1,75 @@
+% =============================================================================
+% OpenPatch paper bibliography: verification, RAG, judge, evaluation
+% =============================================================================
+
+% --- Cited in paper.md ---
+
+@inproceedings{lewis2020rag,
+  author    = {Lewis, Patrick and Perez, Ethan and Piktus, Aleksandra and Petroni, Fabio and Karpukhin, Vladimir and Goyal, Naman and K{\"u}ttler, Heinrich and Lewis, Mike and Yih, Wen-tau and Rockt{\"a}schel, Tim and others},
+  title     = {Retrieval-augmented generation for knowledge-intensive {NLP} tasks},
+  booktitle = {Advances in Neural Information Processing Systems},
+  volume    = {33},
+  year      = {2020},
+  url       = {https://arxiv.org/abs/2005.11401},
+  note      = {Foundational RAG; retrieval over documents for generation.}
+}
+
+@inproceedings{zheng2023judging,
+  author    = {Zheng, Lianmin and Chiang, Wei-Lin and Sheng, Ying and Li, Zhuohan and Zhuang, Siyuan and Wu, Zhanghao and Zhuang, Yonghao and Li, Haotian and Lin, Zi and Gonzalez, Joseph E. and Stoica, Ion and Zhang, Hao},
+  title     = {Judging {LLM}-as-a-judge with {MT}-bench and {Chatbot} Arena},
+  booktitle = {Advances in Neural Information Processing Systems},
+  volume    = {36},
+  year      = {2023},
+  url       = {https://arxiv.org/abs/2306.05685},
+  note      = {LLM-as-judge for model comparison; rubric-based evaluation.}
+}
+
+@inproceedings{gao2023pal,
+  author    = {Gao, Luyu and Madaan, Aman and Zhou, Shuyan and Alon, Uri and Liu, Pengfei and Yang, Yiming and Callan, Jamie and Neubig, Graham},
+  title     = {{PAL}: Program-aided language models},
+  booktitle = {Proceedings of the 40th International Conference on Machine Learning},
+  year      = {2023},
+  url       = {https://arxiv.org/abs/2211.10435},
+  note      = {Programmatic verification (e.g., execution) for reasoning; claim-level checking.}
+}
+
+% --- Additional key references matching OpenPatch research ---
+
+@inproceedings{wang2023selfconsistency,
+  author    = {Wang, Xuezhi and Wei, Jason and Schuurmans, Dale and Le, Quoc and Chi, Ed and Narang, Sharan and Chowdhery, Aakanksha and Zhou, Denny},
+  title     = {Self-consistency improves chain of thought reasoning in language models},
+  booktitle = {International Conference on Learning Representations},
+  year      = {2023},
+  url       = {https://arxiv.org/abs/2203.11171},
+  note      = {Multiple samples and majority vote for reasoning; aligns with improved-mode selection.}
+}
+
+@inproceedings{wei2022cot,
+  author    = {Wei, Jason and Wang, Xuezhi and Schuurmans, Dale and Bosma, Maarten and Ichter, Brian and Xia, Fei and Chi, Ed and Le, Quoc and Zhou, Denny},
+  title     = {Chain-of-thought prompting elicits reasoning in large language models},
+  booktitle = {Advances in Neural Information Processing Systems},
+  volume    = {35},
+  year      = {2022},
+  url       = {https://arxiv.org/abs/2201.11903},
+  note      = {Structured reasoning and “show your work”; relevant to math and verification.}
+}
+
+@inproceedings{manakul2023selfcheckgpt,
+  author    = {Manakul, Potsa and Liusie, Adian and Gales, Mark J. F.},
+  title     = {Self{CheckGPT}: Zero-resource black-box hallucination detection for generative large language models},
+  booktitle = {Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing},
+  year      = {2023},
+  url       = {https://arxiv.org/abs/2303.08896},
+  note      = {Consistency and factuality checking of LLM outputs; related to contradiction and citation verification.}
+}
+
+@misc{openpatch,
+  author       = {Gyal, Nyida and OpenPatch Contributors},
+  title        = {OpenPatch: A verification-first pipeline and evaluation harness for reliable language model outputs},
+  year         = {2026},
+  publisher    = {GitHub},
+  howpublished = {GitHub repository},
+  url          = {https://github.com/nyida/ai},
+  note         = {Software: multi-candidate generation, programmatic and model-based verification, judge, reliability report, in-app eval suite, and external Python harness for baseline-vs-improved benchmarks.}
+}
 
