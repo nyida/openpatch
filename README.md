@@ -4,12 +4,13 @@ A full-stack app that delivers higher correctness than any single LLM by orchest
 
 ## Features
 
-- **Multi-candidate generation**: 2–4 candidate answers from different model configs
-- **Verification**: Citation (RAG), calculator, contradiction, and safety verifiers
-- **Judge**: Rubric-based selection with verifier evidence
-- **Reliability report**: Retrieval usage, claims supported %, arithmetic verified, contradictions, overall confidence
-- **Trace storage**: Every run stores input, retrieval chunks, candidates, verifier results, judge decision
-- **Eval harness**: Fixed test suite, version comparison, regression tracking
+- **Pipeline modes**: Full pipeline (multi-candidate → verify → judge), **Standard** (single LLM call), or **Improved** (multi-candidate with majority-vote or heuristic selection) for chat and eval.
+- **Multi-candidate generation**: 2–5 candidate answers from different model configs (full pipeline or improved mode).
+- **Verification**: Citation (RAG), calculator, contradiction, and safety verifiers (full pipeline only).
+- **Judge**: Rubric-based selection with verifier evidence (full pipeline only).
+- **Reliability report**: Retrieval usage, claims supported %, arithmetic verified, contradictions, overall confidence.
+- **Trace storage**: Every run stores input, retrieval chunks, candidates, verifier results, judge decision.
+- **Eval harness**: In-app suite (property-based, version-tagged) and external Python harness (baseline vs improved, ground-truth accuracy, bootstrap CIs).
 
 ## Tech stack
 
@@ -41,7 +42,7 @@ cp .env.example .env
 npm run db:generate
 npm run db:push
 
-# Seed eval suite (30+ cases)
+# Seed eval suite (39 cases)
 npm run db:seed
 
 # Run dev server
@@ -78,7 +79,7 @@ OLLAMA_URLS="http://localhost:11434/v1,http://localhost:11435/v1,http://localhos
 
 One-line start: run `./scripts/start-5-ollama.sh`. Or start extra instances (e.g. in separate terminals): `OLLAMA_HOST=0.0.0.0:11435 ollama serve`, then same for 11436, 11437, 11438. Load one model per instance (e.g. instance 2 runs `ollama run qwen2.5:3b` so it’s warm).
 
-Web search (Tavily): set `TAVILY_API_KEY` when the user has no URLs/docs.
+Web search (Tavily): set `TAVILY_ENABLED=true` and `TAVILY_API_KEY` when the user has no URLs/docs.
 
 ### Env vars
 
@@ -89,6 +90,8 @@ Web search (Tavily): set `TAVILY_API_KEY` when the user has no URLs/docs.
 | `OLLAMA_MODEL` | Chat model name (default `llama3.2`). |
 | `OLLAMA_EMBED_MODEL` | Embedding model (default `nomic-embed-text`). |
 | `CANDIDATE_COUNT` | Number of candidate answers per run (default 5, max 5). |
+| `SKIP_ROUTER` | When unset or not `false`, task classification is skipped (task type stored as `unknown`). Set to `false` to enable router. |
+| `IMPROVED_N_CANDIDATES` | Number of candidates in improved mode (default 3, min 2, max 5). |
 | `DATABASE_URL` | PostgreSQL connection string |
 | `ENCRYPTION_KEY` | 32+ char secret for encrypting stored API keys |
 | `NEXTAUTH_SECRET` | Session secret |
@@ -116,7 +119,8 @@ Web search (Tavily): set `TAVILY_API_KEY` when the user has no URLs/docs.
          v                   v                   v
   +-------------+   +----------------+   +----------------+
   |   ROUTER     |   |   RETRIEVE     |   |   GENERATE     |
-  | (task type)  |   | (RAG chunks)   |   | (2-4 candidates)|
+  | (optional;   |   | (RAG or Tavily)|   | (2–5 candidates)|
+  |  task type)  |   | (top-k chunks) |   |                |
   +-------------+   +----------------+   +----------------+
          |                   |                   |
          +-------------------+-------------------+
@@ -149,10 +153,13 @@ Web search (Tavily): set `TAVILY_API_KEY` when the user has no URLs/docs.
 
 ## Evaluation and research
 
+**In-app suite:** Suites and cases in the DB (seed: 39 cases). Each case has optional expected properties; runs are tagged with `VERSION_TAG`. UI: Evals page; API: `POST /api/evals/run`, `GET /api/evals/suites`, `GET /api/evals/results`.
+
+**External harness:** Python scripts in `evals/`. Config: `evals/configs/main.yaml`. Run: `python -m evals.run --config evals/configs/main.yaml` (POSTs each dataset item to `POST /api/eval/run-one` with `mode: baseline` and `mode: improved`). Score: `python -m evals.score --config evals/configs/main.yaml` (accuracy, invalid-format, latency → `evals/results/`). Analyze: `python -m evals.analyze --config evals/configs/main.yaml` (bootstrap CIs, tables, figures). Datasets: e.g. `evals/datasets/sample_qa.json`, `qa_200.json` (items: `id`, `prompt`, `ground_truth`; ANSWER-line format). Dry run: set `dry_run: true` in config or `EVAL_DRY_RUN=1` to use a fake LLM keyed by ground truth.
+
 - **Run ID:** Deterministic; no time-based entropy. `runId(prompt, mode, stableContext)` with required `stableContext` (e.g. DB run UUID for chat, `dataset_id:item_id` for eval).
 - **Seeding:** Canonical `seed32(input)` and `stableKeyTemperature(temp)`; baseline and improved candidate seeds include temperature in the seed input string.
 - **Invalid format:** Parser-based: `invalid_format` is true when `parsed_answer` is missing or the chosen candidate’s raw output fails the strict ANSWER-line check (line-anchored `ANSWER : <value>`).
-- **Dry run:** Eval dry run exercises the full stack: evals.run POSTs to `/api/eval/run-one` with `dry_run: true`; the server passes `dryRun` through the call stack (no process.env) so baseline/improved use fake LLM per request and append to `app_runs/logs/runs.jsonl`.
 - **Improved selection (eval mode):** Majority vote on parsed answers (self-consistency); tie-break by latency then index; `final_answer` is the majority value. This improves accuracy on structured-answer tasks under format constraints; claims are scoped to that setting and do not imply general chatbot quality without further human eval or broader benchmarks.
 
 ## Key files
@@ -160,18 +167,24 @@ Web search (Tavily): set `TAVILY_API_KEY` when the user has no URLs/docs.
 | Area | Path |
 |------|------|
 | Run pipeline | `src/lib/pipeline/run.ts` |
+| Baseline (single call) | `src/lib/pipeline/baseline.ts` |
+| Improved (multi-candidate select) | `src/lib/pipeline/improved.ts` |
 | Router (task type) | `src/lib/pipeline/router.ts` |
 | Multi-candidate gen | `src/lib/pipeline/generate.ts` |
 | Judge | `src/lib/pipeline/judge.ts` |
 | Reliability report | `src/lib/pipeline/reliability.ts` |
 | Verifiers | `src/lib/verifiers/*.ts` (claims, citation, calculator, contradiction, safety) |
 | Retrieval | `src/lib/retrieval/retrieve.ts`, `chunk.ts` |
-| Eval runner | `src/lib/evals/runner.ts` |
+| Run log (eval harness) | `src/lib/run-log.ts` |
+| Seed / runId | `src/lib/seed.ts` |
+| Eval runner (in-app) | `src/lib/evals/runner.ts` |
 | API run | `src/app/api/run/route.ts` |
+| API eval run-one | `src/app/api/eval/run-one/route.ts` |
 | Trace viewer | `src/app/runs/[id]/page.tsx` |
 | Eval UI | `src/app/evals/page.tsx` |
 | DB schema | `prisma/schema.prisma` |
-| Seed (30+ cases) | `prisma/seed.ts` |
+| Seed (39 cases) | `prisma/seed.ts` |
+| External harness | `evals/run.py`, `evals/score.py`, `evals/analyze.py`, `evals/configs/main.yaml` |
 
 ## Adding a new verifier
 
