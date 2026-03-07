@@ -53,9 +53,25 @@ export async function POST(req: NextRequest) {
     const titleToUse = title ?? (messages[0]?.role === 'user' ? messages[0].content.slice(0, 80) : 'Chat');
 
     if (conversationId) {
+      const existing = await prisma.conversation.findUnique({
+        where: { id: conversationId },
+        select: { userId: true },
+      });
+      if (!existing) return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
+      if (existing.userId && existing.userId !== session?.id) {
+        return NextResponse.json({ error: 'Not authorized to update this conversation' }, { status: 403 });
+      }
+      if (!session && existing.userId) {
+        return NextResponse.json({ error: 'Sign in to update this conversation' }, { status: 401 });
+      }
       const updated = await prisma.conversation.update({
         where: { id: conversationId },
-        data: { messages, title: titleToUse, updatedAt: new Date() },
+        data: {
+          messages,
+          title: titleToUse,
+          updatedAt: new Date(),
+          ...(session && !existing.userId ? { userId: session.id } : {}),
+        },
       });
       return NextResponse.json(updated);
     }

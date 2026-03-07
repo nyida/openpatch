@@ -1,34 +1,27 @@
-import { cookies } from 'next/headers';
+import { createClient } from '@/lib/supabase/server';
 import { prisma } from './db';
-
-const SESSION_COOKIE = 'openpatch_session';
-const SESSION_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
 export type SessionUser = { id: string; email: string } | null;
 
 export async function getSession(): Promise<SessionUser> {
-  const cookieStore = await cookies();
-  const token = cookieStore.get(SESSION_COOKIE)?.value;
-  if (!token) return null;
-  const user = await prisma.user.findFirst({ where: { id: token } });
-  if (!user) return null;
-  return { id: user.id, email: user.email };
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.email) return null;
+
+  const normalized = user.email.trim().toLowerCase();
+  let dbUser = await prisma.user.findUnique({ where: { email: normalized } });
+  if (!dbUser) {
+    dbUser = await prisma.user.create({ data: { email: normalized } });
+  }
+  return { id: dbUser.id, email: dbUser.email };
 }
 
-export async function setSession(userId: string) {
-  const cookieStore = await cookies();
-  cookieStore.set(SESSION_COOKIE, userId, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: SESSION_MAX_AGE,
-    path: '/',
-  });
-}
+// Legacy - no-op; Supabase handles session
+export async function setSession(_userId: string) {}
 
 export async function clearSession() {
-  const cookieStore = await cookies();
-  cookieStore.delete(SESSION_COOKIE);
+  const supabase = await createClient();
+  await supabase.auth.signOut();
 }
 
 export async function getOrCreateUserByEmail(email: string) {

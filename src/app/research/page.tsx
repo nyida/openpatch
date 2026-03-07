@@ -6,7 +6,7 @@ import { PageMotion } from '@/components/PageMotion';
 
 export const metadata: Metadata = {
   title: 'Research & Methodology | OpenPatch',
-  description: 'Technical and research foundations (Open: A Verification-First Architecture for Reliable Language Model Outputs). Multi-model orchestration, verification, and reliability reporting.',
+  description: 'OpenPatch: verification-first pipeline for reliable LLM outputs. Multi-model orchestration, programmatic verification (arithmetic, citation, contradiction, safety), judge selection, reliability reporting. Optional CORTEX: calibrated confidence and learned routing. GSM8K-scale evaluation.',
 };
 
 export default function ResearchPage() {
@@ -19,21 +19,21 @@ export default function ResearchPage() {
           <ResearchSection id="abstract">
             <h2 className="font-serif text-2xl font-semibold text-slate-900 mb-4">Abstract</h2>
             <p className="text-slate-700 leading-[1.75]">
-              We describe the design and implementation of OpenPatch, a system that improves
-              the correctness and calibratability of language-model-generated answers. The main
-              pipeline: (1) optionally classifies the query by task type, (2) augments context via
-              retrieval over user-supplied documents or URLs (or optional web search when none are
-              provided), (3) generates multiple candidate answers from distinct model configurations
-              in parallel, (4) runs a verification layer over each candidate (arithmetic, citation
-              support, internal consistency, and safety), (5) uses a judge model to select a single
-              answer with access to verifier evidence, and (6) produces a structured reliability
-              report. Every run is persisted as a full trace for audit and analysis. The app also
-              supports baseline (single-call) and improved (multi-candidate with majority-vote or
-              heuristic selection) modes for evaluation and optional chat use. We maintain an in-app
-              evaluation suite with property-based expectations and version-tagged runs, plus an
-              external Python harness for baseline-vs-improved benchmarks with ground-truth accuracy
-              and bootstrap analysis. This document provides a detailed account of each component
-              and the rationale behind our design choices.
+              We describe the design and implementation of OpenPatch, a verification-first system
+              that improves the correctness and auditability of language-model-generated answers.
+              The main pipeline: (1) optionally classifies the query by task type, (2) augments
+              context via retrieval over user-supplied documents or URLs (or optional web search),
+              (3) generates multiple candidate answers in parallel, (4) runs a verification layer
+              over each candidate (arithmetic, citation, contradiction, and safety), (5) uses a
+              judge model to select one answer with access to verifier evidence, and (6) produces
+              a structured reliability report. Every run is persisted as a full trace. The app
+              supports three modes: <strong>Standard</strong> (full pipeline), <strong>Improved</strong> (multi-candidate
+              with majority-vote or heuristic selection, no verifiers/judge), and <strong>CORTEX</strong> (optional
+              extension: multi-model inference, calibrated confidence, and learned routing). We
+              maintain an in-app evaluation suite and an external Python harness for reproducible
+              baseline-vs-improved benchmarks with bootstrap analysis. Publication-scale evaluation
+              uses the full GSM8K test set (1319 examples). This document provides a detailed
+              account of each component and our design choices.
             </p>
           </ResearchSection>
 
@@ -61,16 +61,16 @@ export default function ResearchPage() {
               2. Pipeline Architecture
             </h2>
             <p className="text-slate-700 leading-[1.75] mb-4">
-              OpenPatch supports three execution modes. When the app is used without the
-              &quot;improved mode&quot; toggle, the <strong>full pipeline</strong> runs (steps
-              below). When baseline or improved mode is requested (e.g. from the UI or the eval API),
-              a shorter path is used: <strong>baseline</strong> is a single LLM call with
-              deterministic seeding (no verifiers or judge); <strong>improved</strong> generates
-              <em>N</em> candidates in parallel and selects by majority vote on parsed answers in
-              eval mode, or by a heuristic (format + safety) in chat mode—no full verification
-              layer or judge. Baseline and improved are used for the external evaluation harness
-              and for the optional in-app toggle; the full pipeline is used otherwise. Below we
-              describe the full pipeline. Given a user query and optional attachments or URLs:
+              The UI offers three pipeline choices. <strong>Standard</strong> runs the full pipeline
+              (steps below). <strong>Improved</strong> skips verifiers and judge: it generates
+              <em>N</em> candidates and selects by majority vote on parsed answers (eval mode) or
+              by a heuristic (format + safety) in chat mode. <strong>CORTEX</strong> uses a
+              separate Python backend: multi-model inference (e.g. Ollama), calibrated confidence
+              (temperature-scaled heuristic), and learned routing (model with highest predicted
+              correctness); see §10. For the external evaluation harness, we call the eval API
+              with <strong>baseline</strong> (single LLM call, deterministic seed) or
+              <strong> improved</strong> (multi-candidate then vote). Below we describe the full
+              (Standard) pipeline. Given a user query and optional attachments or URLs:
             </p>
             <ol className="list-decimal list-inside space-y-2 text-slate-700 leading-[1.75] mb-4">
               <li>
@@ -335,7 +335,7 @@ export default function ResearchPage() {
             </h3>
             <p className="text-slate-700 leading-[1.75] mb-4">
               A fixed set of evaluation cases is grouped into suites (e.g. &quot;OpenPatch Default
-              Suite&quot; with 30+ cases). Each case has an input prompt, an optional attachment
+              Suite&quot;, 39 cases). Each case has an input prompt, an optional attachment
               reference, a task type, and optional expected properties (e.g. minimum confidence
               level, retrieval required, minimum claims-supported percentage). When we run a suite,
               we execute the full pipeline for each case and compare the run&apos;s reliability
@@ -350,22 +350,73 @@ export default function ResearchPage() {
             <p className="text-slate-700 leading-[1.75] mb-4">
               A Python-based harness (<code className="research-code">evals/</code>) runs
               baseline and improved modes against benchmark datasets. Each dataset item has a
-              prompt and ground-truth answer (with a strict <code className="research-code">ANSWER:
-              &lt;value&gt;</code> format). The harness POSTs each item to the app&apos;s eval API
-              (<code className="research-code">/api/eval/run-one</code>) once for baseline and
-              once for improved; the server runs <code className="research-code">runBaseline</code> or
+              prompt and ground-truth answer (strict <code className="research-code">ANSWER:
+              &lt;value&gt;</code> format). The harness POSTs each item to
+              <code className="research-code">/api/eval/run-one</code> once for baseline and once
+              for improved; the server runs <code className="research-code">runBaseline</code> or
               <code className="research-code">runImproved</code> and appends a deterministic run
-              record to a log. A scoring step reads the log and computes accuracy (normalized match
-              to ground truth), invalid-format rate (missing or malformed ANSWER line), and
-              latency. An analysis step produces bootstrap confidence intervals, paired
-              comparisons, and summary tables/figures. Run IDs are deterministic (
-              <code className="research-code">runId(prompt, mode, stableContext)</code>) and
-              baseline/improved use seeded generation, so results are reproducible. Dry-run mode
-              uses a fake LLM keyed by ground truth for fast testing without live models.
+              record to a log. A scoring step computes accuracy (normalized match to ground truth),
+              invalid-format rate, and latency; an analysis step produces bootstrap confidence
+              intervals and summary tables. Run IDs are deterministic (
+              <code className="research-code">runId(prompt, mode, stableContext)</code>); no
+              time-based entropy is used. Dry-run mode uses a fake LLM keyed by ground truth for
+              testing without live models.
+            </p>
+            <h3 className="font-serif text-lg font-semibold text-slate-800 mt-6 mb-2">
+              9.3 Publication-scale evaluation (GSM8K)
+            </h3>
+            <p className="text-slate-700 leading-[1.75] mb-4">
+              For publication (e.g. TMLR), results must use <strong>full-scale</strong> evaluation.
+              The standard is the full GSM8K test set (1319 examples). Small datasets (e.g. 200
+              items) are for debugging and sanity checks only. Required artifacts: for OpenPatch,
+              <code className="research-code">evals/results/metrics.csv</code> and
+              <code className="research-code">evals/results/bootstrap_results.json</code>; for
+              CORTEX, <code className="research-code">cortex/experiments/&lt;run_id&gt;/metrics.json</code> with
+              <strong>n_test ≈ 1319</strong>. Execution order: (1) fetch dataset (
+              <code className="research-code">python3 scripts/fetch_gsm8k.py</code>), (2) run
+              OpenPatch eval with <code className="research-code">evals/configs/large_scale.yaml</code> (Next.js
+              running), (3) run CORTEX with <code className="research-code">cd cortex &amp;&amp; python3
+              scripts/run_all.py ../evals/datasets/gsm8k.json</code>. See
+              <code className="research-code">docs/TMLR_SUBMISSION_READINESS.md</code> in the repo.
             </p>
             <p className="text-slate-700 leading-[1.75]">
-              Together, the in-app suite and the external harness let us detect regressions and
-              compare configurations (including baseline vs improved) in a reproducible way.
+              Together, the in-app suite and the external harness support regression detection
+              and reproducible comparison of baseline vs improved (and CORTEX when used).
+            </p>
+          </ResearchSection>
+
+          <ResearchSection id="cortex">
+            <h2 className="font-serif text-2xl font-semibold text-slate-900 mb-4">
+              10. CORTEX (Optional Extension)
+            </h2>
+            <p className="text-slate-700 leading-[1.75] mb-4">
+              CORTEX is an <strong>optional extension</strong> in the same repository. It provides
+              calibrated confidence estimation and learned model routing. It runs as a separate
+              Python FastAPI backend; when the user selects CORTEX in the pipeline toggle, the app
+              proxies queries to that backend instead of the main OpenPatch pipeline.
+            </p>
+            <p className="text-slate-700 leading-[1.75] mb-4">
+              <strong>Inference:</strong> The same prompt is sent to multiple models (e.g. llama3,
+              mistral, phi, gemma via Ollama). <strong>Confidence:</strong> A heuristic score is
+              computed from ensemble features (response length, token entropy, self-consistency
+              across models) and per-response features (e.g. refusal detection). We calibrate this
+              <em> heuristic</em> via logit-space temperature scaling—we do <strong>not</strong> calibrate
+              token logprobs or model likelihoods. Temperature is fit on a validation split to
+              minimize ECE. <strong>Routing:</strong> When a learned router artifact exists, a
+              lightweight classifier predicts P(correct) per model response using a shared feature
+              builder (same at training and inference); the model with highest predicted
+              correctness is selected. When the router is used, the confidence and reliability
+              shown to the user are <strong>per-model</strong> (selected model&apos;s P(correct));
+              the calibrated global heuristic is exposed as an optional
+              <code className="research-code">ensemble_confidence</code> field.
+            </p>
+            <p className="text-slate-700 leading-[1.75]">
+              The experiment runner collects per-(prompt, model) records with a deterministic
+              60/20/20 train/val/test split. Evaluation reports baseline accuracy (first model per
+              prompt), routed accuracy (argmax P(correct)), and oracle accuracy (max correct over
+              models per prompt). Bootstrap is over prompts. Full details and reproduction
+              commands are in <code className="research-code">cortex/README.md</code> and
+              <code className="research-code">docs/TMLR_SUBMISSION_READINESS.md</code>.
             </p>
           </ResearchSection>
 
@@ -375,16 +426,18 @@ export default function ResearchPage() {
             </h2>
             <p className="text-slate-700 leading-[1.75] mb-4">
               The design draws on established ideas: multi-model ensembles and voting, RAG and
-              retrieval-augmented generation, claim extraction and entailment/NLI for citation
-              checking, and rubric-based LLM-as-judge evaluation. We do not claim novelty in these
-              components; our contribution is an integrated pipeline with full traceability and a
-              user-facing reliability report.
+              retrieval-augmented generation, claim extraction and citation checking, and
+              rubric-based LLM-as-judge evaluation. Calibration (CORTEX) uses temperature scaling
+              on a heuristic confidence score (Guo et al.), not on token logprobs. We do not claim
+              novelty in these components; our contribution is an integrated pipeline with full
+              traceability, a user-facing reliability report, and an optional calibration/routing
+              extension.
             </p>
             <ul className="list-disc list-inside space-y-1 text-slate-700 leading-[1.75]">
               <li>Retrieval-augmented generation (Lewis et al.) and dense retrieval for open-domain QA.</li>
               <li>Programmatic verification of arithmetic and symbolic math in LLM outputs.</li>
-              <li>Using LLMs as judges for summarization and long-form generation (e.g. LLM-as-a-Judge).</li>
-              <li>Uncertainty calibration and refusal behavior in aligned language models.</li>
+              <li>LLM-as-judge for candidate selection (e.g. Zheng et al.).</li>
+              <li>Temperature scaling for confidence calibration (Guo et al.); we apply it to a heuristic score.</li>
             </ul>
           </ResearchSection>
         </article>
@@ -403,7 +456,7 @@ export default function ResearchPage() {
             <Link href="/evals" className="text-teal-600 hover:text-teal-700 font-medium">
               Eval suite
             </Link>
-            , and the <code className="text-slate-600 bg-slate-100 px-1">evals/</code> harness in the repository.
+            , and the <code className="text-slate-600 bg-slate-100 px-1">evals/</code> and CORTEX harnesses in the repository. For publication-scale evaluation (GSM8K, n ≈ 1319), see <code className="text-slate-600 bg-slate-100 px-1">docs/TMLR_SUBMISSION_READINESS.md</code>.
           </p>
         </footer>
       </div>

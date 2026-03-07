@@ -2,7 +2,7 @@ import Link from 'next/link';
 
 export function Footer() {
   return (
-    <footer className="mt-auto border-t border-slate-200/90 bg-white/80">
+    <footer className="mt-auto border-t border-slate-200/80 bg-white/90 backdrop-blur-sm">
       <div className="container mx-auto max-w-6xl px-4 py-6">
         <div className="flex flex-wrap items-center justify-between gap-6 text-[13px]">
           <div className="flex items-center gap-4">
@@ -24,9 +24,6 @@ export function Footer() {
             </Link>
             <Link href="/runs" className="text-slate-500 hover:text-slate-800 transition-colors">
               Runs
-            </Link>
-            <Link href="/evals" className="text-slate-500 hover:text-slate-800 transition-colors">
-              Evals
             </Link>
             <Link href="/settings" className="text-slate-500 hover:text-slate-800 transition-colors">
               Settings

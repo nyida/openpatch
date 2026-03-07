@@ -1,0 +1,31 @@
+{
+  "baseline_accuracy": 1.0,
+  "routed_accuracy": 0.0,
+  "oracle_accuracy": 1.0,
+  "routed_oracle_ratio": 0.0,
+  "baseline_oracle_ratio": 1.0,
+  "routing_lift": -1.0,
+  "routing_lift_ci_95": [
+    -1.0,
+    -1.0
+  ],
+  "ece_before": 0.07599999999999998,
+  "ece_after": 0.1894507650108639,
+  "brier_before": 0.19447315999999998,
+  "brier_after": 0.22355964764236008,
+  "n_test": 2,
+  "temperature": 3.0,
+  "random_seed": 42,
+  "bootstrap_seed": 42,
+  "n_bootstrap": 1000,
+  "split_seed": null,
+  "split_rule": null,
+  "models": [
+    "gemma",
+    "llama3",
+    "mistral",
+    "phi"
+  ],
+  "ollama_version": "ollama version is 0.16.2",
+  "dataset_path": "datasets/sample.json"
+}

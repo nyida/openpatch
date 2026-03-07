@@ -1,0 +1,29 @@
+{
+  "started_at": "2026-03-01T07:18:38.326892+00:00",
+  "finished_at": "2026-03-01T16:18:59.967573+00:00",
+  "seed": 42,
+  "limit": 500,
+  "modes": [
+    "baseline",
+    "improved",
+    "standard"
+  ],
+  "num_candidates": 3,
+  "datasets": [
+    {
+      "name": "gsm8k",
+      "path": "/Users/nyidagyal/Desktop/ai/evals/datasets/gsm8k.json",
+      "n_total": 1319,
+      "n_used": 500,
+      "skipped": 819,
+      "sha256": "b3bb2092468944bb5f31102e84de1514a3f2171801f5f4ebbc714c293a58e11c"
+    }
+  ],
+  "n_total_all": 1319,
+  "n_used_all": 500,
+  "skipped_all": 819,
+  "dry_run": false,
+  "is_submission_run": true,
+  "config_sha256": "c3d059ec62137dcdcc0c9a98590cf88622ddef39e5e85b97ae2d46291e2dc016",
+  "config_path": "/Users/nyidagyal/Desktop/ai/evals/configs/large_scale.yaml"
+}

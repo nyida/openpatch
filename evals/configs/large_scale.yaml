@@ -1,0 +1,24 @@
+# Large-scale evaluation for TMLR submission (bounded: 500 items).
+# Create evals/datasets/gsm8k.json first: python scripts/fetch_gsm8k.py
+# Model is set via env (e.g. OLLAMA_MODEL or OPENROUTER_MODEL). Set CANDIDATE_COUNT=3 for standard/improved.
+
+datasets:
+  - id: gsm8k
+    path: evals/datasets/gsm8k.json
+
+runs_log: app_runs/logs/runs.jsonl
+results_dir: evals/results
+
+# Bounded run for first submission
+submission_n: 500   # n_used_all must equal this for is_submission_run=true (upgrade to 1319 if needed)
+limit: 500
+seed: 42
+num_candidates: 3
+modes: [baseline, improved, standard]
+
+bootstrap:
+  iterations: 1000
+  confidence_level: 0.95
+
+dry_run: false
+api_base: http://localhost:3000

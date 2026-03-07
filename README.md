@@ -4,7 +4,7 @@ A full-stack app that delivers higher correctness than any single LLM by orchest
 
 ## Features
 
-- **Pipeline modes**: Full pipeline (multi-candidate → verify → judge), **Standard** (single LLM call), or **Improved** (multi-candidate with majority-vote or heuristic selection) for chat and eval.
+- **Pipeline modes**: Full pipeline (multi-candidate → verify → judge), **Standard** (single LLM call), **Improved** (multi-candidate with majority-vote or heuristic selection), or **CORTEX** (confidence-optimized routing: multi-model inference, confidence estimation, reliability indicator, alternative model outputs) for chat and eval.
 - **Multi-candidate generation**: 2–5 candidate answers from different model configs (full pipeline or improved mode).
 - **Verification**: Citation (RAG), calculator, contradiction, and safety verifiers (full pipeline only).
 - **Judge**: Rubric-based selection with verifier evidence (full pipeline only).
@@ -18,7 +18,7 @@ A full-stack app that delivers higher correctness than any single LLM by orchest
 - **Backend**: Next.js route handlers (API routes)
 - **DB**: PostgreSQL via Prisma
 - **Queue**: In-process (designed to swap to Redis later)
-- **Auth**: Passwordless demo (magic-link style session by email)
+- **Auth**: Supabase (email/password sign-up/sign-in; Google/GitHub OAuth via Supabase Dashboard)
 - **Storage**: Local disk for uploads; interface ready for S3
 
 ## Setup
@@ -36,7 +36,7 @@ npm install
 
 # Copy env and set variables
 cp .env.example .env
-# Edit .env: DATABASE_URL, ENCRYPTION_KEY, NEXTAUTH_SECRET, VERSION_TAG
+# Edit .env: DATABASE_URL, NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, VERSION_TAG
 
 # Generate Prisma client and push schema (requires DATABASE_URL in .env)
 npm run db:generate
@@ -85,21 +85,23 @@ Web search (Tavily): set `TAVILY_ENABLED=true` and `TAVILY_API_KEY` when the use
 
 | Variable | Description |
 |----------|-------------|
-| `OLLAMA_BASE_URL` | Single Ollama API base (default `http://localhost:11434/v1`). |
+| `OLLAMA_BASE_URL` | Single Ollama API base (default `http://localhost:11434/v1`). Omit for production; use `OPENROUTER_API_KEY` or `OPENAI_API_KEY` instead. |
 | `OLLAMA_URLS` | Comma-separated URLs for 5 parallel Ollama instances (e.g. ports 11434–11438). When set, each candidate uses a different URL. |
 | `OLLAMA_MODEL` | Chat model name (default `llama3.2`). |
 | `OLLAMA_EMBED_MODEL` | Embedding model (default `nomic-embed-text`). |
-| `CANDIDATE_COUNT` | Number of candidate answers per run (default 5, max 5). |
+| `OPENROUTER_API_KEY` | For production (Vercel etc.): [OpenRouter](https://openrouter.ai) key. Used when `OLLAMA_BASE_URL`/`OLLAMA_URLS` not set. |
+| `OPENAI_API_KEY` | Alternative for production: OpenAI key. Used when Ollama and OpenRouter not configured. |
+| `CANDIDATE_COUNT` | Number of candidate answers per run (default 3, max 5). |
 | `SKIP_ROUTER` | When unset or not `false`, task classification is skipped (task type stored as `unknown`). Set to `false` to enable router. |
 | `IMPROVED_N_CANDIDATES` | Number of candidates in improved mode (default 3, min 2, max 5). |
 | `DATABASE_URL` | PostgreSQL connection string |
 | `ENCRYPTION_KEY` | 32+ char secret for encrypting stored API keys |
-| `NEXTAUTH_SECRET` | Session secret |
-| `NEXTAUTH_URL` | App URL (e.g. http://localhost:3000) |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key |
 | `VERSION_TAG` | Tag for regression comparison (e.g. `v1.0.0`) |
 | `UPLOAD_DIR` | Local upload directory (default `./uploads`) |
 | `MAX_UPLOAD_MB` | Max file size in MB (default 10) |
-| `TAVILY_ENABLED` | Set to `true` to enable web search when no docs/URLs (default off for speed). |
+| `TAVILY_ENABLED` | Set to `true` to enable web search and images for visual explanations (default off for speed). |
 | `TAVILY_API_KEY` | [Tavily](https://tavily.com) key when `TAVILY_ENABLED=true`. |
 
 ## Architecture (ASCII)
@@ -118,9 +120,9 @@ Web search (Tavily): set `TAVILY_ENABLED=true` and `TAVILY_API_KEY` when the use
          +-------------------+-------------------+
          v                   v                   v
   +-------------+   +----------------+   +----------------+
-  |   ROUTER    |   |   RETRIEVE     |   |   GENERATE     |
-  | (optional;  |   | (RAG or Tavily)|   |(2–5 candidates)|
-  |  task type) |   | (top-k chunks) |   |                |
+  |   ROUTER     |   |   RETRIEVE     |   |   GENERATE     |
+  | (optional;   |   | (RAG or Tavily)|   | (2–5 candidates)|
+  |  task type)  |   | (top-k chunks) |   |                |
   +-------------+   +----------------+   +----------------+
          |                   |                   |
          +-------------------+-------------------+
@@ -155,12 +157,32 @@ Web search (Tavily): set `TAVILY_ENABLED=true` and `TAVILY_API_KEY` when the use
 
 **In-app suite:** Suites and cases in the DB (seed: 39 cases). Each case has optional expected properties; runs are tagged with `VERSION_TAG`. UI: Evals page; API: `POST /api/evals/run`, `GET /api/evals/suites`, `GET /api/evals/results`.
 
-**External harness:** Python scripts in `evals/`. Config: `evals/configs/main.yaml`. Run: `python -m evals.run --config evals/configs/main.yaml` (POSTs each dataset item to `POST /api/eval/run-one` with `mode: baseline` and `mode: improved`). Score: `python -m evals.score --config evals/configs/main.yaml` (accuracy, invalid-format, latency → `evals/results/`). Analyze: `python -m evals.analyze --config evals/configs/main.yaml` (bootstrap CIs, tables, figures). Datasets: e.g. `evals/datasets/sample_qa.json`, `qa_200.json` (items: `id`, `prompt`, `ground_truth`; ANSWER-line format). Dry run: set `dry_run: true` in config or `EVAL_DRY_RUN=1` to use a fake LLM keyed by ground truth.
+**External harness:** Python scripts in `evals/`. Config: `evals/configs/main.yaml`. Run: `python -m evals.run --config evals/configs/main.yaml` (POSTs each dataset item to `POST /api/eval/run-one` with `mode: baseline`, `improved`, or `standard`). Score: `python -m evals.score --config ...` (accuracy, invalid-format, latency, confidence → `evals/results/`). Analyze: `python -m evals.analyze --config ...` (bootstrap CIs, calibration ECE/Brier, sign test, tables). **Staging gate:** run with `--limit 50` first to validate end-to-end, then run with limit=500 for submission. **Dry-run:** set `dry_run: true` or `EVAL_DRY_RUN=1` to use a fake LLM keyed by ground truth; dry-run is for CI/CD and pipeline verification only and must not be used for the manuscript's Results (see `evals/README.md`).
+
 
 - **Run ID:** Deterministic; no time-based entropy. `runId(prompt, mode, stableContext)` with required `stableContext` (e.g. DB run UUID for chat, `dataset_id:item_id` for eval).
 - **Seeding:** Canonical `seed32(input)` and `stableKeyTemperature(temp)`; baseline and improved candidate seeds include temperature in the seed input string.
 - **Invalid format:** Parser-based: `invalid_format` is true when `parsed_answer` is missing or the chosen candidate’s raw output fails the strict ANSWER-line check (line-anchored `ANSWER : <value>`).
 - **Improved selection (eval mode):** Majority vote on parsed answers (self-consistency); tie-break by latency then index; `final_answer` is the majority value. This improves accuracy on structured-answer tasks under format constraints; claims are scoped to that setting and do not imply general chatbot quality without further human eval or broader benchmarks.
+
+### CORTEX mode (confidence-optimized routing)
+
+**CORTEX** is a separate Python FastAPI backend that runs multi-model inference (Ollama: llama3, mistral, phi, gemma), logs per-(prompt, model) records for experiments, **calibrates confidence** via temperature scaling (fit on a validation split), and performs **learned routing** via a lightweight classifier trained offline to predict \(P(\text{correct})\) per model response. The UI shows **Confidence %**, **Reliability** (High/Medium/Low), and **alternative model outputs**.
+
+- Start the CORTEX backend: `cd cortex && pip install -r requirements.txt && uvicorn backend.main:app --port 8000`
+- Set `CORTEX_API_URL` in `.env` if the backend is not at `http://localhost:8000`
+- On the home page, select **CORTEX** in the pipeline toggle and run a query
+
+**Reproduce calibration + routing metrics + plots (one command):**
+
+```bash
+cd cortex
+python scripts/run_all.py datasets/sample.json
+```
+
+See `cortex/README.md` for full details (splits, artifacts, ECE/Brier, reliability diagrams, bootstrap CI).
+
+**TMLR submission (bounded empirical scale).** Use the bounded GSM8K workflow: (1) `python3 scripts/fetch_gsm8k.py` (if needed), (2) run with **limit=50** first (staging gate; see `evals/README.md`), then (3) run with **limit=500** using `evals/configs/large_scale.yaml` (Next.js + real model). Required artifacts: `evals/results/run_metadata.json` (n_used_all=500), `evals/results/metrics.csv`, `evals/results/bootstrap_results.json`. Then run `python -m evals.export_for_paper` to generate `paper/results_table.tex` and `paper/results_delta.tex`; the manuscript must include these via `\input{...}`. **Dry-run results must not appear in the paper** (pipeline sanity only). See `evals/README.md` for staging gate and dry-run quarantine.
 
 ## Key files
 
@@ -185,6 +207,8 @@ Web search (Tavily): set `TAVILY_ENABLED=true` and `TAVILY_API_KEY` when the use
 | DB schema | `prisma/schema.prisma` |
 | Seed (39 cases) | `prisma/seed.ts` |
 | External harness | `evals/run.py`, `evals/score.py`, `evals/analyze.py`, `evals/configs/main.yaml` |
+| CORTEX API proxy | `src/app/api/cortex/query/route.ts` |
+| CORTEX backend | `cortex/backend/main.py`, `inference.py`, `confidence.py`, `calibration.py`, `routing.py`, `experiment_runner.py` |
 
 ## Adding a new verifier
 

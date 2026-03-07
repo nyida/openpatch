@@ -1,0 +1,43 @@
+{
+  "feature_order": [
+    "raw_confidence",
+    "token_entropy",
+    "self_consistency",
+    "response_length",
+    "response_entropy",
+    "mean_length",
+    "length_std",
+    "agreement_count",
+    "num_models",
+    "refusal_detected"
+  ],
+  "feature_names": [
+    "raw_confidence",
+    "token_entropy",
+    "self_consistency",
+    "response_length",
+    "response_entropy",
+    "mean_length",
+    "length_std",
+    "agreement_count",
+    "num_models",
+    "refusal_detected",
+    "model_gemma",
+    "model_llama3",
+    "model_mistral",
+    "model_phi",
+    "latency_ms",
+    "token_count"
+  ],
+  "n_features": 16,
+  "models": [
+    "gemma",
+    "llama3",
+    "mistral",
+    "phi"
+  ],
+  "n_samples": 8,
+  "dataset": "sample",
+  "split": "train",
+  "random_state": 42
+}

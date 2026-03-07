@@ -3,6 +3,13 @@ import * as openrouter from './openrouter';
 import * as ollama from './ollama';
 import { logger } from '@/lib/logger';
 
+/** True when Ollama is configured (local or remote). */
+export function isOllamaConfigured(): boolean {
+  if (process.env.OLLAMA_BASE_URL?.trim()) return true;
+  const urls = process.env.OLLAMA_URLS?.trim();
+  return Boolean(urls && urls.split(',').some((u) => u.trim().length > 0));
+}
+
 // Parse OLLAMA_URLS for parallel multi-instance: "http://localhost:11434/v1,http://localhost:11435/v1,..."
 export function getOllamaUrls(): string[] {
   const raw = process.env.OLLAMA_URLS;
@@ -30,17 +37,48 @@ const OLLAMA_MODEL_MAP: Record<string, string> = {
   codellama: 'codellama',
 };
 
+/** Cloud model for OpenRouter (one key, many models). */
+const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL ?? 'openai/gpt-4o-mini';
+/** Cloud model for OpenAI. */
+const OPENAI_MODEL = process.env.OPENAI_MODEL ?? 'gpt-4o-mini';
+
 export interface LLMAdapter {
   complete(messages: { role: string; content: string }[], options?: { model?: string; maxTokens?: number; temperature?: number }): Promise<string>;
 }
 
+function getCloudLLM(): 'openrouter' | 'openai' | null {
+  if (process.env.OPENROUTER_API_KEY?.trim()) return 'openrouter';
+  if (process.env.OPENAI_API_KEY?.trim()) return 'openai';
+  return null;
+}
+
 export const defaultLLM: LLMAdapter = {
   async complete(messages, options) {
-    return ollama.complete(messages, {
-      model: options?.model ?? process.env.OLLAMA_MODEL ?? 'llama3.2',
-      maxTokens: options?.maxTokens,
-      temperature: options?.temperature,
-    });
+    if (isOllamaConfigured()) {
+      return ollama.complete(messages, {
+        model: options?.model ?? process.env.OLLAMA_MODEL ?? 'llama3.2',
+        maxTokens: options?.maxTokens,
+        temperature: options?.temperature,
+      });
+    }
+    const cloud = getCloudLLM();
+    if (cloud === 'openrouter') {
+      return openrouter.complete(messages, {
+        model: OPENROUTER_MODEL,
+        maxTokens: options?.maxTokens ?? 768,
+        temperature: options?.temperature ?? 0.3,
+      });
+    }
+    if (cloud === 'openai') {
+      return openai.complete(messages, {
+        model: OPENAI_MODEL,
+        maxTokens: options?.maxTokens ?? 768,
+        temperature: options?.temperature ?? 0.3,
+      });
+    }
+    throw new Error(
+      'No LLM configured. Set OLLAMA_BASE_URL (local), or OPENROUTER_API_KEY / OPENAI_API_KEY (production).'
+    );
   },
 };
 
@@ -61,13 +99,50 @@ export async function completeWithModel(
     dryRunEval?: { ground_truth: string; candidateIndex: number; baseSeed: string };
   }
 ): Promise<string> {
-  const model = resolveModel(modelKey);
-  logger.info('LLM complete (Ollama)', { model, messageCount: messages.length, baseUrl: opts?.baseUrl ? '(custom)' : undefined });
-  return ollama.complete(messages, { model, ...opts });
+  if (opts?.dryRunEval) {
+    return ollama.complete(messages, { ...opts, model: 'llama3.2' });
+  }
+  if (isOllamaConfigured()) {
+    const model = resolveModel(modelKey);
+    logger.info('LLM complete (Ollama)', { model, messageCount: messages.length, baseUrl: opts?.baseUrl ? '(custom)' : undefined });
+    return ollama.complete(messages, { model, ...opts });
+  }
+  const cloud = getCloudLLM();
+  if (cloud === 'openrouter') {
+    logger.info('LLM complete (OpenRouter)', { model: OPENROUTER_MODEL, messageCount: messages.length });
+    return openrouter.complete(messages, {
+      model: OPENROUTER_MODEL,
+      maxTokens: opts?.maxTokens ?? 768,
+      temperature: opts?.temperature ?? 0.3,
+    });
+  }
+  if (cloud === 'openai') {
+    logger.info('LLM complete (OpenAI)', { model: OPENAI_MODEL, messageCount: messages.length });
+    return openai.complete(messages, {
+      model: OPENAI_MODEL,
+      maxTokens: opts?.maxTokens ?? 768,
+      temperature: opts?.temperature ?? 0.3,
+    });
+  }
+  throw new Error(
+    'No LLM configured. Set OLLAMA_BASE_URL (local), or OPENROUTER_API_KEY / OPENAI_API_KEY (production).'
+  );
 }
 
 export async function embed(texts: string[], model?: string): Promise<number[][]> {
-  return ollama.embed(texts, model);
+  if (isOllamaConfigured()) {
+    return ollama.embed(texts, model);
+  }
+  const cloud = getCloudLLM();
+  if (cloud === 'openrouter') {
+    return openrouter.embed(texts);
+  }
+  if (cloud === 'openai') {
+    return openai.embed(texts);
+  }
+  throw new Error(
+    'No embed model. Set OLLAMA_BASE_URL, or OPENROUTER_API_KEY / OPENAI_API_KEY.'
+  );
 }
 
 export { openai, openrouter, ollama };

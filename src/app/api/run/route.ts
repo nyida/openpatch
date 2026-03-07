@@ -9,6 +9,7 @@ const bodySchema = z.object({
   inputText: z.string().min(1).max(50000),
   urls: z.array(z.string().url()).optional(),
   attachmentIds: z.array(z.string()).optional(),
+  attachments: z.array(z.object({ id: z.string(), name: z.string() })).optional(),
   conversationHistory: z.array(z.object({ role: z.string(), content: z.string() })).optional(),
   improvedMode: z.boolean().optional(),
 });
@@ -21,8 +22,13 @@ export async function POST(req: NextRequest) {
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
     }
+    const { attachmentIds, attachments, ...rest } = parsed.data;
+    const effectiveAttachmentIds = attachments?.map((a) => a.id) ?? attachmentIds ?? [];
+    const attachmentNames = attachments ? Object.fromEntries(attachments.map((a) => [a.id, a.name])) : undefined;
     const result = await executeRun({
-      ...parsed.data,
+      ...rest,
+      attachmentIds: effectiveAttachmentIds,
+      attachmentNames,
       userId: session?.id,
       improvedMode: parsed.data.improvedMode,
     });

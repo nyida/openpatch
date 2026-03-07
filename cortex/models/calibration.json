@@ -1,0 +1,12 @@
+{
+  "temperature": 3.0,
+  "method": "temp_scaling_logit",
+  "n_bins": 10,
+  "fit_metric": "NLL",
+  "fit_nll": 0.7362423581618266,
+  "fit_ece": 0.2898279753445399,
+  "dataset": "sample",
+  "split": "val",
+  "timestamp": "2026-02-26T20:29:55.686009+00:00",
+  "n_samples": 8
+}

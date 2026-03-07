@@ -1,4 +1,4 @@
-import { completeWithModel } from '@/lib/llm';
+import { completeWithModel, getOllamaUrls } from '@/lib/llm';
 import { seed32, stableKeyTemperature } from '@/lib/seed';
 import type { RunCandidate } from '@/lib/run-log';
 import { parseAnswer, hasAnswerFormat } from '@/lib/parse-answer';
@@ -6,7 +6,7 @@ import { verifySafety } from '@/lib/verifiers';
 
 const DEFAULT_MODEL = process.env.OLLAMA_MODEL ?? 'llama3.2';
 const DEFAULT_TEMP = 0.3;
-const DEFAULT_MAX_TOKENS = 1024;
+const DEFAULT_MAX_TOKENS = 768;
 const N_CANDIDATES = Math.min(5, Math.max(2, parseInt(process.env.IMPROVED_N_CANDIDATES ?? '3', 10)));
 
 export interface ImprovedInput {
@@ -115,33 +115,37 @@ export async function runImproved(input: ImprovedInput): Promise<ImprovedResult>
     { role: 'user' as const, content: input.prompt },
   ];
   const start = Date.now();
-  const candidates: RunCandidate[] = [];
-  for (let i = 0; i < n; i++) {
-    const seed = seed32(`${input.baseSeed}|${stableKeyTemperature(temperature)}|cand:${i}`);
-    const t0 = Date.now();
-    const dryRunEval =
-      input.dryRun && input.evalMode && input.ground_truth != null
-        ? { ground_truth: input.ground_truth, candidateIndex: i, baseSeed: input.baseSeed }
-        : undefined;
-    const raw = await completeWithModel(model, messages, {
-      temperature,
-      maxTokens,
-      seed,
-      dryRunEval,
-    });
-    const latencyMs = Date.now() - t0;
-    const parsed = input.evalMode ? parseAnswer(raw) : undefined;
-    candidates.push({
-      model,
-      raw,
-      parsed,
-      latencyMs,
-      sample_index: i,
-      seed,
-      temperature,
-      maxTokens,
-    });
-  }
+  const ollamaUrls = getOllamaUrls();
+  const candidates: RunCandidate[] = await Promise.all(
+    Array.from({ length: n }, async (_, i) => {
+      const seed = seed32(`${input.baseSeed}|${stableKeyTemperature(temperature)}|cand:${i}`);
+      const t0 = Date.now();
+      const dryRunEval =
+        input.dryRun && input.evalMode && input.ground_truth != null
+          ? { ground_truth: input.ground_truth, candidateIndex: i, baseSeed: input.baseSeed }
+          : undefined;
+      const baseUrl = ollamaUrls.length > 0 ? ollamaUrls[i % ollamaUrls.length] : undefined;
+      const raw = await completeWithModel(model, messages, {
+        temperature,
+        maxTokens,
+        seed,
+        dryRunEval,
+        baseUrl,
+      });
+      const latencyMs = Date.now() - t0;
+      const parsed = input.evalMode ? parseAnswer(raw) : undefined;
+      return {
+        model,
+        raw,
+        parsed,
+        latencyMs,
+        sample_index: i,
+        seed,
+        temperature,
+        maxTokens,
+      };
+    })
+  );
 
   const parsedList = candidates.map((c) => c.parsed ?? parseAnswer(c.raw)).filter((v): v is string => v != null && v !== '');
   let consistency: string | undefined;

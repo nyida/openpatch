@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { runId as seedRunId } from '@/lib/seed';
 
-export type PipelineMode = 'baseline' | 'improved';
+export type PipelineMode = 'baseline' | 'improved' | 'standard';
 
 export interface RunCandidate {
   model: string;
@@ -49,6 +49,8 @@ export interface RunRecord {
       refusal_ok?: boolean;
       consistency?: string;
     };
+    /** Scalar confidence for calibration (ECE/Brier). E.g. agreement rate or reliability-derived. */
+    confidence?: number;
   };
   latency_ms: number;
   failure?: string;

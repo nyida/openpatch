@@ -9,6 +9,8 @@ import { ReliabilityReport } from '@/components/ReliabilityReport';
 import { MarkdownContent } from '@/components/MarkdownContent';
 import { AnimatedBackground } from '@/components/AnimatedBackground';
 
+type CortexAlternative = { model: string; output: string; confidence?: number; latency_ms?: number };
+
 type ChatMessage = {
   role: 'user' | 'assistant';
   content: string;
@@ -17,6 +19,13 @@ type ChatMessage = {
   latencyMs?: number;
   /** Run trace for research export (when improvedMode was used). */
   runTrace?: Record<string, unknown>;
+  /** CORTEX: confidence-optimized routing response */
+  cortex?: {
+    confidence: number;
+    reliability: string;
+    selected_model: string;
+    alternatives: CortexAlternative[];
+  };
 };
 
 const container = {
@@ -46,15 +55,22 @@ function HomePageContent() {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [input, setInput] = useState('');
   const [urls, setUrls] = useState('');
-  const [uploadIds, setUploadIds] = useState<string[]>([]);
+  const [uploads, setUploads] = useState<{ id: string; name: string }[]>([]);
   const [improvedMode, setImprovedMode] = useState(false);
+  const [cortexMode, setCortexMode] = useState(false);
+  const pipelineMode: 'standard' | 'improved' | 'cortex' = cortexMode ? 'cortex' : improvedMode ? 'improved' : 'standard';
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [signedIn, setSignedIn] = useState<boolean | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   useEffect(() => { scrollToBottom(); }, [messages, loading]);
+
+  useEffect(() => {
+    fetch('/api/auth/session').then((r) => r.json()).then((d) => setSignedIn(!!d?.user)).catch(() => setSignedIn(false));
+  }, []);
 
   // Load conversation from URL
   useEffect(() => {
@@ -88,7 +104,7 @@ function HomePageContent() {
       form.set('file', f);
       const res = await fetch('/api/upload', { method: 'POST', body: form });
       const data = await res.json();
-      if (data.id) setUploadIds((prev) => [...prev, data.id]);
+      if (data.id) setUploads((prev) => [...prev, { id: data.id, name: data.name ?? f.name }]);
     }
   }
 
@@ -103,30 +119,78 @@ function HomePageContent() {
     setMessages((prev) => [...prev, { role: 'user', content: toSend }]);
 
     try {
+      if (pipelineMode === 'cortex') {
+        const res = await fetch('/api/cortex/query', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: toSend }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'CORTEX request failed');
+        const newAssistant: ChatMessage = {
+          role: 'assistant',
+          content: data.answer ?? '',
+          latencyMs: data.latency_ms,
+          cortex: {
+            confidence: data.confidence ?? 0,
+            reliability: data.reliability ?? 'Medium',
+            selected_model: data.selected_model ?? '',
+            alternatives: Array.isArray(data.alternatives) ? data.alternatives : [],
+          },
+        };
+        setMessages((prev) => [...prev, newAssistant]);
+        const allMessages = [...messages, { role: 'user' as const, content: toSend }, newAssistant];
+        const payload = {
+          conversationId: conversationId ?? undefined,
+          title: messages.length === 0 ? toSend.slice(0, 80) : undefined,
+          messages: allMessages.map((m) => ({ role: m.role, content: m.content, runId: m.runId })),
+        };
+        try {
+          const chatRes = await fetch('/api/chats', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+          const chatData = await chatRes.json();
+          if (chatData.id && !conversationId) {
+            setConversationId(chatData.id);
+            router.replace(`/?chat=${chatData.id}`, { scroll: false });
+          }
+        } catch (_) {}
+        if (messages.length === 0) setUrls('');
+        setUploads([]);
+        setLoading(false);
+        return;
+      }
+
       const body: {
         inputText: string;
         urls?: string[];
-        attachmentIds?: string[];
+        attachments?: { id: string; name: string }[];
         conversationHistory?: { role: string; content: string }[];
         improvedMode?: boolean;
       } = { inputText: toSend, improvedMode };
 
       if (messages.length === 0) {
         if (urls.trim()) body.urls = urls.split(/\s+/).map((u) => u.trim()).filter(Boolean);
-        if (uploadIds.length) body.attachmentIds = uploadIds;
+        if (uploads.length) body.attachments = uploads;
       } else {
         body.conversationHistory = [...messages, { role: 'user', content: toSend }].map((m) => ({ role: m.role, content: m.content }));
         if (urls.trim()) body.urls = urls.split(/\s+/).map((u) => u.trim()).filter(Boolean);
-        if (uploadIds.length) body.attachmentIds = uploadIds;
+        if (uploads.length) body.attachments = uploads;
       }
 
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3 * 60 * 1000); // 3 min for long runs
       const res = await fetch('/api/run', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
+        signal: controller.signal,
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Request failed');
+      clearTimeout(timeoutId);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(typeof data?.error === 'string' ? data.error : data?.error?.message || 'Request failed');
 
       const newAssistant: ChatMessage = {
         role: 'assistant',
@@ -163,9 +227,15 @@ function HomePageContent() {
       } catch (_) {}
 
       if (messages.length === 0) setUrls('');
-      setUploadIds([]);
+      setUploads([]);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Something went wrong');
+      const message =
+        e instanceof Error
+          ? e.name === 'AbortError'
+            ? 'Request took too long (over 3 minutes). Try a shorter question or check the server.'
+            : e.message
+          : 'Something went wrong';
+      setError(message);
       setMessages((prev) => prev.slice(0, -1));
     } finally {
       setLoading(false);
@@ -188,7 +258,7 @@ function HomePageContent() {
           >
             <div className="text-center">
               <motion.div variants={item} className="flex justify-center mb-4">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-none overflow-hidden bg-white border border-slate-200 shadow-sm">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl overflow-hidden bg-white border border-slate-200/80 shadow-sm">
                   <Image src="/logo.png" alt="" width={56} height={56} className="object-contain p-1.5" aria-hidden />
                 </div>
               </motion.div>
@@ -196,29 +266,37 @@ function HomePageContent() {
                 Ask anything. Multiple models answer, we verify and pick the best. Attach docs or URLs for sourced answers.
               </motion.p>
               <motion.div variants={item} className="mt-5 flex flex-wrap justify-center gap-2">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-none bg-white/90 text-xs font-medium text-slate-600">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/90 text-xs font-medium text-slate-600 shadow-sm border border-slate-200/60">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                   Verified answers
                 </span>
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-none bg-white/90 text-xs font-medium text-slate-600">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/90 text-xs font-medium text-slate-600 shadow-sm border border-slate-200/60">
                   Full trace
                 </span>
                 <Link
                   href="/paper.pdf"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-none text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100/80 transition-colors"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100/80 border border-emerald-200/60 transition-colors"
                 >
                   <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                   Paper (PDF)
                 </Link>
+                {signedIn === false && (
+                  <Link
+                    href="/auth"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-amber-700 bg-amber-50 hover:bg-amber-100/80 border border-amber-200 transition-colors"
+                  >
+                    Not signed in — Sign in to save chats
+                  </Link>
+                )}
               </motion.div>
             </div>
           </motion.section>
         )}
 
         <section className="flex-1 flex flex-col min-h-0 min-w-0">
-          <div className="flex-1 overflow-y-auto py-4 min-h-0 chat-scroll pb-6">
+          <div className="flex-1 overflow-y-auto py-4 min-h-0 chat-scroll pb-6 overscroll-contain">
             <div className={`space-y-5 ${messages.length > 0 ? 'max-w-3xl mx-auto' : ''}`}>
               <AnimatePresence initial={false}>
                 {messages.map((m, i) => (
@@ -234,12 +312,12 @@ function HomePageContent() {
                   >
                     <motion.div
                       layout
-                      className={`max-w-[88%] rounded-none px-5 py-4 ${
+                      className={`max-w-[88%] rounded-2xl px-5 py-4 ${
                         m.role === 'user'
                           ? 'bg-[var(--accent)] text-slate-900 shadow-sm border border-slate-200/60'
-                          : 'bg-white border border-slate-200 shadow-sm'
+                          : 'bg-white border border-slate-200/80 shadow-sm'
                       }`}
-                      whileHover={{ boxShadow: m.role === 'user' ? '0 2px 8px -2px rgba(0,0,0,0.06)' : '0 2px 8px -2px rgba(0,0,0,0.06)' }}
+                      whileHover={{ boxShadow: '0 4px 12px -2px rgba(0,0,0,0.08)' }}
                       transition={{ type: 'spring', stiffness: 400, damping: 25 }}
                     >
                       {m.role === 'assistant' ? (
@@ -247,15 +325,48 @@ function HomePageContent() {
                       ) : (
                         <div className="whitespace-pre-wrap text-[15px] leading-[1.6]">{m.content}</div>
                       )}
-                      {m.role === 'assistant' && (m.runId || m.reliability || m.latencyMs != null) && (
+                      {m.role === 'assistant' && (m.runId || m.reliability || m.latencyMs != null || m.cortex) && (
                         <div className="mt-4 pt-4 border-t border-slate-100 space-y-3">
+                          {m.cortex && (
+                            <div className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-4 space-y-3">
+                              <div className="flex items-center gap-2.5 flex-wrap">
+                                <span className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold border bg-white border-slate-200 text-slate-700">
+                                  Confidence: {Math.round((m.cortex.confidence ?? 0) * 100)}%
+                                </span>
+                                <span className={`inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold border ${
+                                  m.cortex.reliability === 'High' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' :
+                                  m.cortex.reliability === 'Low' ? 'bg-amber-100 text-amber-800 border-amber-200' :
+                                  'bg-slate-100 text-slate-700 border-slate-200'
+                                }`}>
+                                  Reliability: {m.cortex.reliability}
+                                </span>
+                                {m.cortex.selected_model && (
+                                  <span className="text-xs text-slate-600 font-medium">Model: {m.cortex.selected_model}</span>
+                                )}
+                              </div>
+                              {m.cortex.alternatives?.length > 0 && (
+                                <details className="text-xs">
+                                  <summary className="cursor-pointer text-slate-600 font-medium">Alternative model outputs</summary>
+                                  <ul className="mt-2 space-y-2 pl-2 border-l-2 border-slate-200">
+                                    {m.cortex.alternatives.map((alt, i) => (
+                                      <li key={i}>
+                                        <span className="font-medium text-slate-600">{alt.model}</span>
+                                        {alt.latency_ms != null && <span className="text-slate-500 ml-1">({alt.latency_ms}ms)</span>}
+                                        <p className="mt-0.5 text-slate-600 line-clamp-2">{alt.output}</p>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </details>
+                              )}
+                            </div>
+                          )}
                           {m.reliability && typeof m.reliability === 'object' && (
                             <ReliabilityReport data={m.reliability as import('@/components/ReliabilityReport').ReliabilityData} />
                           )}
                           <div className="flex items-center gap-3 text-xs text-slate-500 flex-wrap">
                             {m.latencyMs != null && <span>{m.latencyMs}ms</span>}
                             {m.runId && (
-                              <Link
+                                <Link
                                 href={`/runs/${m.runId}`}
                                 className="text-teal-600 hover:text-teal-700 font-medium inline-flex items-center gap-1 transition-colors"
                               >
@@ -293,13 +404,13 @@ function HomePageContent() {
                   className="flex justify-start"
                 >
                   <motion.div
-                    className="rounded-none bg-white border border-slate-200 px-5 py-4 shadow-sm inline-flex gap-2.5"
+                    className="rounded-2xl bg-white border border-slate-200/80 px-5 py-4 shadow-sm inline-flex gap-2.5"
                     animate={{ opacity: [0.9, 1] }}
                     transition={{ repeat: Infinity, duration: 1, repeatType: 'reverse' }}
                   >
-                    <motion.span className="w-2.5 h-2.5 rounded-full bg-slate-400" animate={{ y: [0, -4, 0] }} transition={{ repeat: Infinity, duration: 0.5 }} />
-                    <motion.span className="w-2.5 h-2.5 rounded-full bg-slate-400" animate={{ y: [0, -4, 0] }} transition={{ repeat: Infinity, duration: 0.5, delay: 0.1 }} />
-                    <motion.span className="w-2.5 h-2.5 rounded-full bg-slate-400" animate={{ y: [0, -4, 0] }} transition={{ repeat: Infinity, duration: 0.5, delay: 0.2 }} />
+                    <motion.span className="w-2.5 h-2.5 rounded-full bg-teal-500" animate={{ y: [0, -4, 0] }} transition={{ repeat: Infinity, duration: 0.5 }} />
+                    <motion.span className="w-2.5 h-2.5 rounded-full bg-teal-500" animate={{ y: [0, -4, 0] }} transition={{ repeat: Infinity, duration: 0.5, delay: 0.1 }} />
+                    <motion.span className="w-2.5 h-2.5 rounded-full bg-teal-500" animate={{ y: [0, -4, 0] }} transition={{ repeat: Infinity, duration: 0.5, delay: 0.2 }} />
                   </motion.div>
                 </motion.div>
               )}
@@ -315,7 +426,7 @@ function HomePageContent() {
                 exit={{ opacity: 0, y: -4 }}
                 className="flex-shrink-0 py-2"
               >
-                <div className="rounded-none bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+                <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
                   {error}
                 </div>
               </motion.div>
@@ -359,19 +470,19 @@ function HomePageContent() {
                     </svg>
                     Attach files
                   </button>
-                  {uploadIds.length > 0 && (
-                    <span className="text-xs text-slate-500 font-medium self-center">{uploadIds.length} file(s)</span>
+                  {uploads.length > 0 && (
+                    <span className="text-xs text-slate-500 font-medium self-center">{uploads.length} file(s)</span>
                   )}
                   <div
                     role="group"
                     aria-label="Pipeline mode"
-                    className="inline-flex h-[40px] shrink-0 rounded-none border border-[var(--border)] bg-[var(--bg-surface)] overflow-hidden"
+                    className="inline-flex h-[40px] shrink-0 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] overflow-hidden"
                   >
                     <button
                       type="button"
-                      onClick={() => setImprovedMode(false)}
+                      onClick={() => { setImprovedMode(false); setCortexMode(false); }}
                       className={`h-full px-3 text-sm font-medium transition-colors ${
-                        !improvedMode
+                        pipelineMode === 'standard'
                           ? 'bg-[var(--accent)] text-slate-800'
                           : 'text-slate-600 hover:bg-[var(--bg-subtle)] hover:text-slate-800'
                       }`}
@@ -380,14 +491,25 @@ function HomePageContent() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setImprovedMode(true)}
+                      onClick={() => { setImprovedMode(true); setCortexMode(false); }}
                       className={`h-full px-3 text-sm font-medium transition-colors ${
-                        improvedMode
+                        pipelineMode === 'improved'
                           ? 'bg-[var(--accent)] text-slate-800'
                           : 'text-slate-600 hover:bg-[var(--bg-subtle)] hover:text-slate-800'
                       }`}
                     >
                       Improved
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setImprovedMode(false); setCortexMode(true); }}
+                      className={`h-full px-3 text-sm font-medium transition-colors ${
+                        pipelineMode === 'cortex'
+                          ? 'bg-[var(--accent)] text-slate-800'
+                          : 'text-slate-600 hover:bg-[var(--bg-subtle)] hover:text-slate-800'
+                      }`}
+                    >
+                      CORTEX
                     </button>
                   </div>
                   <button
@@ -447,19 +569,19 @@ function HomePageContent() {
                     </svg>
                     Attach files
                   </button>
-                  {uploadIds.length > 0 && (
-                    <span className="text-xs text-slate-500 font-medium">{uploadIds.length} file(s)</span>
+                  {uploads.length > 0 && (
+                    <span className="text-xs text-slate-500 font-medium">{uploads.length} file(s)</span>
                   )}
                   <div
                     role="group"
                     aria-label="Pipeline mode"
-                    className="inline-flex h-[40px] shrink-0 rounded-none border border-[var(--border)] bg-[var(--bg-surface)] overflow-hidden"
+                    className="inline-flex h-[40px] shrink-0 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] overflow-hidden"
                   >
                     <button
                       type="button"
-                      onClick={() => setImprovedMode(false)}
+                      onClick={() => { setImprovedMode(false); setCortexMode(false); }}
                       className={`h-full px-3 text-sm font-medium transition-colors ${
-                        !improvedMode
+                        pipelineMode === 'standard'
                           ? 'bg-[var(--accent)] text-slate-800'
                           : 'text-slate-600 hover:bg-[var(--bg-subtle)] hover:text-slate-800'
                       }`}
@@ -468,14 +590,25 @@ function HomePageContent() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setImprovedMode(true)}
+                      onClick={() => { setImprovedMode(true); setCortexMode(false); }}
                       className={`h-full px-3 text-sm font-medium transition-colors ${
-                        improvedMode
+                        pipelineMode === 'improved'
                           ? 'bg-[var(--accent)] text-slate-800'
                           : 'text-slate-600 hover:bg-[var(--bg-subtle)] hover:text-slate-800'
                       }`}
                     >
                       Improved
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setImprovedMode(false); setCortexMode(true); }}
+                      className={`h-full px-3 text-sm font-medium transition-colors ${
+                        pipelineMode === 'cortex'
+                          ? 'bg-[var(--accent)] text-slate-800'
+                          : 'text-slate-600 hover:bg-[var(--bg-subtle)] hover:text-slate-800'
+                      }`}
+                    >
+                      CORTEX
                     </button>
                   </div>
                 </div>

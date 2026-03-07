@@ -1,0 +1,16 @@
+# 200-item evaluation (qa_200.json). For debugging/sanity only — NOT for TMLR submission.
+# Submission requires full GSM8K (1319): fetch_gsm8k.py then evals/configs/large_scale.yaml.
+
+datasets:
+  - id: qa_200
+    path: evals/datasets/qa_200.json
+
+runs_log: app_runs/logs/runs.jsonl
+results_dir: evals/results
+
+bootstrap:
+  iterations: 1000
+  confidence_level: 0.95
+
+dry_run: false
+api_base: http://localhost:3000

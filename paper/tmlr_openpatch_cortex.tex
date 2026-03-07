@@ -1,0 +1,164 @@
+% TMLR-ready draft: OpenPatch (verification-first pipeline) + optional CORTEX extension
+% Replace placeholder macros with values from cortex/experiments/<run_id>/metrics.json when available.
+% Command to generate CORTEX metrics: from repo root: cd cortex && python scripts/run_all.py datasets/sample.json
+
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{natbib}
+
+\title{OpenPatch: A Verification-First LLM Pipeline with Optional Calibrated Routing}
+\author{Nyida Gyal\\
+  Independent Researcher}
+\date{2026}
+
+% ---------- Placeholder macros: fill from metrics.json or leave as-is for draft ----------
+\newcommand{\CORTEXbaseline}{--}      % baseline_accuracy
+\newcommand{\CORTEXrouted}{--}        % routed_accuracy
+\newcommand{\CORTEXoracle}{--}        % oracle_accuracy
+\newcommand{\CORTEXroutedOracle}{--}  % routed_oracle_ratio
+\newcommand{\CORTEXlift}{--}          % routing_lift
+\newcommand{\CORTEXciLow}{--}         % routing_lift_ci_95[0]
+\newcommand{\CORTEXciHigh}{--}        % routing_lift_ci_95[1]
+\newcommand{\CORTEXeceBefore}{--}     % ece_before
+\newcommand{\CORTEXeceAfter}{--}      % ece_after
+\newcommand{\CORTEXbrierBefore}{--}    % brier_before
+\newcommand{\CORTEXbrierAfter}{--}    % brier_after
+\newcommand{\CORTEXtemperature}{--}    % temperature
+\newcommand{\CORTEXbootstrapSeed}{42}
+\newcommand{\CORTEXnBootstrap}{1000}
+\newcommand{\CORTEXsplitSeed}{42}
+\newcommand{\CORTEXsplitRule}{shuffle\_indices\_seed(seed)\_60\_20\_20\_no\_reuse}
+\newcommand{\CORTEXmodels}{llama3, mistral, phi, gemma}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+We describe OpenPatch, an open-source verification-first pipeline for reliable language model outputs: multi-candidate generation, programmatic verifiers (arithmetic, citation, contradiction, safety), an LLM judge that selects an answer using verifier evidence, and a structured reliability report with full trace persistence. The system supports three execution modes---full pipeline, baseline (single call with deterministic seeding), and improved (multi-candidate with majority or heuristic selection)---and provides both an in-app evaluation suite and an external Python harness for reproducible baseline-vs-improved benchmarks with bootstrap confidence intervals. As an optional extension, CORTEX adds calibrated confidence estimation and learned model routing: a heuristic confidence score is calibrated via logit-space temperature scaling (not token logprobs), and a lightweight classifier predicts correctness per model for routing. We emphasize correctness, transparency, calibration semantics, and reproducibility (deterministic run IDs, fixed seeds, bootstrap over prompts, and documented split rules).
+\end{abstract}
+
+\section{Introduction}
+\label{sec:intro}
+
+Large language models (LLMs) are widely used for question-answering and assistance, but single-model outputs remain prone to arithmetic errors, unsupported factual claims, and internal contradictions. OpenPatch is an open-source system that improves correctness and auditability by orchestrating multiple candidate answers, running a verification layer, and using an LLM judge to select one answer with access to verifier evidence. Every run produces a structured reliability report and a full trace stored for audit and analysis.
+
+The software supports three execution modes: \textbf{full pipeline} (multi-candidate $\to$ verify $\to$ judge), \textbf{baseline} (single LLM call with deterministic seeding), and \textbf{improved} (multi-candidate with majority-vote or heuristic selection). It includes an in-app evaluation suite with property-based expectations and version-tagged regression tracking, and an external Python harness (run $\to$ score $\to$ analyze) for reproducible baseline-vs-improved benchmarks with ground-truth accuracy and bootstrap confidence intervals.
+
+CORTEX is an \textbf{optional extension} in the same repository. It provides calibrated confidence estimation and learned model routing: multi-model inference (e.g., Ollama), a heuristic confidence score from self-consistency and response features, temperature-scaled calibration of that heuristic (not of token logprobs), and a router that selects the model with highest predicted probability of correctness. OpenPatch is the primary system; CORTEX extends it for users who want confidence-oriented routing and calibration evaluation.
+
+\section{Related Work}
+\label{sec:related}
+
+Frameworks such as LangChain and LlamaIndex provide orchestration and retrieval-augmented generation (RAG)~\citep{lewis2020rag} but do not bundle a fixed verification layer with a judge and a single reliability report. Evaluation platforms (e.g., HELM, Open LLM Leaderboard) focus on benchmarking models rather than shipping a full pipeline with trace storage. Research on LLM-as-a-judge~\citep{zheng2023judging} and on program-aided and claim-level verification~\citep{gao2023pal} informs our judge and citation verifier; we are not aware of an open, integrated system that combines multi-candidate generation, multiple verifiers, a judge, reliability reporting, and a reproducible baseline-vs-improved harness in one repository. Calibration of neural network confidence is well studied~\citep{guo2017calibration}; we apply temperature scaling to a \emph{heuristic} confidence score (self-consistency and related features), not to token-level likelihoods.
+
+\section{System: OpenPatch}
+\label{sec:openpatch}
+
+\subsection{Architecture}
+OpenPatch is built around a single pipeline entry point that branches by mode. Core logic lives under \texttt{src/lib/} (pipeline, verifiers, retrieval, run logging); the web layer is in \texttt{src/app/}.
+
+When the caller does not request baseline or improved mode, the \textbf{full pipeline} runs: (1) optional task classification (LLM, disabled by default via \texttt{SKIP\_ROUTER}); (2) retrieval (chunk documents, embed query and chunks, top-$k$ by cosine similarity) or optional web search (Tavily) when no documents are provided; (3) parallel multi-candidate generation (same prompt, $N$ configurations); (4) per-candidate verification---calculator, contradiction, safety, and when RAG was used, claim extraction plus citation; (5) judge (LLM selects one candidate using verification summaries); (6) aggregation of the chosen candidate's verifications into a reliability report (retrieval used, claims supported \%, arithmetic verified, contradictions, overall confidence). All runs are persisted (Run, RetrievalChunk, Candidate, Verification, JudgeDecision) for inspection.
+
+When \textbf{baseline} or \textbf{improved} mode is requested (e.g., from the UI or from \texttt{POST /api/eval/run-one}), the pipeline calls \texttt{runBaseline} (single LLM call, deterministic seed) or \texttt{runImproved} ($N$ candidates, then majority vote on parsed answers in eval mode or a heuristic in chat mode); these paths omit the full verification stack and judge to support fast, reproducible benchmarks.
+
+\subsection{Verifiers and Judge}
+Verifiers are programmatic and deterministic: calculator (expression evaluation), citation (claim extraction and support from retrieval), contradiction (self-contradiction detection), and safety (content checks). The judge is an LLM that receives verification summaries and selects a candidate; its output is parsed for chosen index and rationale. The reliability report aggregates verifier outcomes and exposes retrieval usage, claims-supported percentage, arithmetic and contradiction flags, and an overall confidence level.
+
+\subsection{Determinism and Trace}
+Determinism is enforced via canonical seeding (\texttt{seed32}, \texttt{stableKeyTemperature}) and run IDs: \texttt{runId(prompt, mode, stableContext)} with \textbf{required} \texttt{stableContext} (e.g., DB run UUID for chat, \texttt{dataset\_id:item\_id} for eval). No time-based entropy is used in run IDs. The external harness logs each run to \texttt{app\_runs/logs/runs.jsonl} with \texttt{run\_id}, mode, inputs, outputs (final answer, candidates, judge), and latency.
+
+\subsection{Evaluation Surfaces}
+\begin{itemize}
+  \item \textbf{In-app}: \texttt{/api/run} (pipeline entry from UI); \texttt{/api/eval/run-one} (single-item baseline or improved for harness); \texttt{/api/evals/run} (suite run); \texttt{/api/evaluation/run}, \texttt{/api/evaluation/score}, \texttt{/api/evaluation/analyze}, \texttt{/api/evaluation/results}, \texttt{/api/evaluation/figures/[name]} for the evaluation UI.
+  \item \textbf{External harness}: \texttt{evals/run.py} (POST per item, baseline + improved, config \texttt{evals/configs/main.yaml}); \texttt{evals/score.py} (read \texttt{runs.jsonl}, compute accuracy and invalid rate, write \texttt{metrics.csv}); \texttt{evals/analyze.py} (bootstrap CI, sign test, tables and figures).
+\end{itemize}
+
+\section{Optional Extension: CORTEX}
+\label{sec:cortex}
+
+CORTEX adds confidence estimation and learned routing. It is implemented as a separate Python backend (FastAPI) and does not replace the OpenPatch pipeline; it can be used as a third mode (e.g., CORTEX toggle in the UI) that calls \texttt{/query} on the CORTEX API.
+
+\subsection{Inference and Confidence Features}
+Multi-model inference runs the same prompt against a configurable model list (default: llama3, mistral, phi, gemma) via Ollama. Confidence is estimated from \textbf{ensemble features}: response length, token entropy (word unigram entropy proxy), self-consistency (agreement across models), agreement count, num models, mean length, length std. Per-response features (response length, response entropy, refusal/hedging detection) are merged with ensemble features and stored per (prompt, model) for router training.
+
+\subsection{Calibration}
+We calibrate a \textbf{heuristic confidence score} via logit-space temperature scaling. We do \emph{not} calibrate model likelihoods (token logprobs). The input to calibration is the scalar heuristic from the confidence layer; temperature $T$ is fit on a validation split to minimize ECE or NLL on the \emph{scaled} heuristic. The implementation uses $\mathrm{logit}(p) = \ln(p/(1-p))$, scaled by $T$, then sigmoid; it is applied to the same scalar that is displayed as ensemble confidence.
+
+\subsection{Routing}
+When a learned router artifact exists, the system computes $\mathrm{P}(\mathrm{correct})$ per response using a shared feature builder: the same \texttt{build\_feature\_vector} is used at training (from \texttt{feature\_json} in experiment records) and at inference (from ensemble + per-response features). The model with highest predicted correctness is selected. Confidence and reliability shown to the user are \textbf{per-model} when the router is active: selected confidence = $\mathrm{P}(\mathrm{correct})$ of the chosen model; reliability = threshold on that value; each alternative gets its own $\mathrm{P}(\mathrm{correct})$. The calibrated global heuristic is exposed as an optional \texttt{ensemble\_confidence} field.
+
+\subsection{Experiment Runner and Evaluation}
+The experiment runner loads a JSON dataset (prompt, ground\_truth), runs multi-model inference per prompt, assigns a deterministic train/val/test split (60/20/20, one split per prompt, no reuse), and writes per-(prompt, model) records to SQLite (\texttt{experiment\_records}) with \texttt{raw\_confidence}, \texttt{feature\_json}, \texttt{correct}, \texttt{split}. Router training uses the same \texttt{build\_feature\_vector} and exports feature order and dimension in \texttt{router\_metadata.json}. Evaluation computes baseline accuracy (first model per prompt), routed accuracy (argmax P(correct) per prompt), and \textbf{oracle accuracy} (max correct over models per prompt, then mean over prompts); it reports routed/oracle and baseline/oracle ratios. Bootstrap is over \textbf{prompts} (sampling unit = prompt\_id). Metrics written to \texttt{metrics.json} include \texttt{bootstrap\_seed}, \texttt{n\_bootstrap}, \texttt{split\_seed}, \texttt{split\_rule}, \texttt{models}, and \texttt{ollama\_version}.
+
+\section{Experimental Setup}
+\label{sec:setup}
+
+\textbf{OpenPatch.} The external harness uses a YAML config (\texttt{evals/configs/main.yaml}) for datasets, log paths, and bootstrap settings. Baseline and improved runs are invoked via \texttt{POST /api/eval/run-one} with \texttt{dataset\_id}, \texttt{item\_id}, \texttt{prompt}, \texttt{ground\_truth}, \texttt{mode}, and optional \texttt{dry\_run}. Dry-run uses a fake LLM keyed by ground truth for reproducibility without a live server.
+
+\textbf{CORTEX.} Data are JSON arrays of \texttt{\{prompt, ground\_truth\}} (or \texttt{question}/\texttt{answer}). Split: deterministic 60/20/20 by shuffled prompt indices with a fixed seed (\texttt{split\_seed}); split rule is documented as \texttt{shuffle\_indices\_seed(seed)\_60\_20\_20\_no\_reuse}. All steps use Python/NumPy/sklearn seed 42. Oracle accuracy is computed per prompt as $\max_{\mathrm{models}} \mathbb{1}[\mathrm{correct}]$, then averaged over prompts.
+
+\section{Results}
+\label{sec:results}
+
+CORTEX metrics are produced by running, from the repository root:
+\begin{quote}
+\texttt{cd cortex \&\& python scripts/run\_all.py datasets/sample.json}
+\end{quote}
+Outputs appear under \texttt{cortex/experiments/<run\_id>/}: \texttt{metrics.json}, \texttt{reliability\_before.json}, \texttt{reliability\_after.json}, \texttt{reliability\_diagram\_before.png}, \texttt{reliability\_diagram\_after.png}. When metrics from a completed run are available, substitute the following placeholders with values from \texttt{metrics.json}:
+
+\begin{center}
+\begin{tabular}{ll}
+\hline
+Metric & Value (placeholder) \\
+\hline
+Baseline accuracy & \CORTEXbaseline \\
+Routed accuracy & \CORTEXrouted \\
+Oracle accuracy & \CORTEXoracle \\
+Routed / oracle ratio & \CORTEXroutedOracle \\
+Routing lift & \CORTEXlift \\
+Routing lift 95\% CI & [\CORTEXciLow, \CORTEXciHigh] \\
+ECE before calibration & \CORTEXeceBefore \\
+ECE after calibration & \CORTEXeceAfter \\
+Brier before & \CORTEXbrierBefore \\
+Brier after & \CORTEXbrierAfter \\
+Temperature (fitted) & \CORTEXtemperature \\
+Bootstrap seed & \CORTEXbootstrapSeed \\
+$n$ bootstrap & \CORTEXnBootstrap \\
+Split seed & \CORTEXsplitSeed \\
+Split rule & \CORTEXsplitRule \\
+Models & \CORTEXmodels \\
+\hline
+\end{tabular}
+\end{center}
+
+The routed/oracle ratio separates router quality from model-set ceiling; bootstrap CIs are over prompts to preserve independence.
+
+\section{Discussion}
+\label{sec:discussion}
+
+OpenPatch provides a single reference implementation for a verification-first pipeline with full traceability and a ready-to-use evaluation harness. CORTEX extends it with calibrated confidence and learned routing while keeping the semantics clear: calibration applies to a heuristic score, and when the router is used, confidence and reliability are per-model. Both systems prioritize reproducibility (run IDs, seeds, documented split and bootstrap units).
+
+\section{Limitations and Ethics}
+\label{sec:limits}
+
+OpenPatch and CORTEX rely on local or configurable model APIs; results depend on model availability and versions. The verification layer is limited to the implemented verifiers (calculator, citation, contradiction, safety). CORTEX's router is trained on experiment data and may not generalize to very different domains. We do not claim that the heuristic confidence equals true token-level likelihood. Ethical use of LLM systems and evaluation data remains the responsibility of deployers.
+
+\section{Reproducibility}
+\label{sec:repro}
+
+\textbf{Submission-ready scale (required for TMLR).} Results in this paper must be produced with \textbf{full GSM8K} (1319 test examples). The 200-example configuration is for debugging/sanity only and is not sufficient as primary evidence. (1) Fetch: \texttt{python3 scripts/fetch\_gsm8k.py} (writes \texttt{evals/datasets/gsm8k.json}). (2) OpenPatch: from repository root, with Next.js running, \texttt{python3 -m evals.run --config evals/configs/large\_scale.yaml}, then \texttt{score} and \texttt{analyze} with the same config. (3) CORTEX: \texttt{cd cortex \&\& python3 scripts/run\_all.py ../evals/datasets/gsm8k.json}. Required artifacts: \texttt{evals/results/metrics.csv}, \texttt{evals/results/bootstrap\_results.json}, and \texttt{cortex/experiments/<run\_id>/metrics.json} with \textbf{n\_test $\approx$ 1319}. See \texttt{docs/TMLR\_SUBMISSION\_READINESS.md}.
+
+\textbf{OpenPatch evaluation (any config).} From repository root: \texttt{python -m evals.run --config evals/configs/main.yaml} (or \texttt{large\_scale.yaml}), then \texttt{evals.score} and \texttt{evals.analyze} with the same config. Logs: \texttt{app\_runs/logs/runs.jsonl}; results: \texttt{evals/results/}.
+
+\textbf{CORTEX run\_all.} From repository root: \texttt{cd cortex \&\& python scripts/run\_all.py <dataset\_path>}, e.g.\ \texttt{../evals/datasets/gsm8k.json} for submission-scale runs. Produces \texttt{cortex/experiments/<dataset\_stem>\_run/metrics.json} and related artifacts.
+
+\section*{Claims--Evidence Table}
+\label{sec:claims}
+See companion \texttt{claims\_evidence.md} for a strict checklist mapping each technical claim to code anchors and artifacts.
+
+\bibliographystyle{plainnat}
+\bibliography{refs}
+\end{document}

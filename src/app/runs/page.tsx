@@ -1,11 +1,15 @@
+import Link from 'next/link';
 import { prisma } from '@/lib/db';
+import { getSession } from '@/lib/auth';
 import { RunsList } from './RunsList';
 import { PageMotion } from '@/components/PageMotion';
 
 export const dynamic = 'force-dynamic';
 
 export default async function RunsPage() {
+  const session = await getSession();
   const runs = await prisma.run.findMany({
+    where: session ? { userId: session.id } : { id: { in: [] } },
     orderBy: { createdAt: 'desc' },
     take: 100,
     select: {
@@ -27,6 +31,12 @@ export default async function RunsPage() {
         </div>
         <p className="page-subtitle">Inspect traces and reliability for each run.</p>
       </div>
+      {!session && (
+        <div className="card max-w-md border-amber-200/80 bg-amber-50/30 rounded-xl mb-6">
+          <p className="text-slate-700 text-sm">Sign in to view your run traces.</p>
+          <Link href="/auth" className="text-teal-600 hover:text-teal-700 text-sm font-medium mt-2 inline-block">Sign in</Link>
+        </div>
+      )}
       <RunsList runs={runs} />
     </PageMotion>
   );

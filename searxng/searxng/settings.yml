@@ -1,0 +1,19 @@
+# SearXNG settings for local use.
+# See https://docs.searxng.org/admin/settings/settings.html#settings-use-default-settings
+use_default_settings: true
+
+server:
+  base_url: "http://localhost:8080/"
+  secret_key: "change-me-in-production-use-openssl-rand-hex-32"
+  limiter: false
+  image_proxy: true
+
+search:
+  formats:
+    - html
+    - json
+    - csv
+    - rss
+
+redis:
+  url: redis://redis:6379/0

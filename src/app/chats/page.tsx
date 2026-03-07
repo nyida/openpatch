@@ -9,14 +9,22 @@ type ChatSummary = { id: string; title: string; updatedAt: string };
 export default function ChatsPage() {
   const [chats, setChats] = useState<ChatSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [signedIn, setSignedIn] = useState<boolean | null>(null);
 
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch('/api/chats');
-        if (res.ok) {
-          const data = await res.json();
-          setChats(data);
+        const sessionRes = await fetch('/api/auth/session');
+        const sessionData = await sessionRes.json();
+        const hasUser = !!sessionData?.user;
+        setSignedIn(hasUser);
+
+        if (hasUser) {
+          const res = await fetch('/api/chats');
+          if (res.ok) {
+            const data = await res.json();
+            setChats(data);
+          }
         }
       } finally {
         setLoading(false);
@@ -35,6 +43,16 @@ export default function ChatsPage() {
       </div>
       {loading ? (
         <p className="text-slate-500 text-sm">Loading…</p>
+      ) : signedIn === false ? (
+        <div className="card max-w-md border-amber-200/80 bg-amber-50/30 rounded-xl">
+          <h2 className="font-semibold text-slate-800">Not signed in</h2>
+          <p className="text-slate-600 text-sm mt-1 mb-4">
+            Sign in or create an account to save your chats and access them from any device.
+          </p>
+          <Link href="/auth" className="btn-primary inline-block">
+            Sign in / Sign up
+          </Link>
+        </div>
       ) : chats.length === 0 ? (
         <p className="text-slate-500 text-sm">No saved chats yet. Start a conversation on Chat and it will be saved here.</p>
       ) : (
@@ -43,7 +61,7 @@ export default function ChatsPage() {
             <li key={c.id}>
               <Link
                 href={`/?chat=${c.id}`}
-                className="block rounded-none border border-slate-200/90 bg-white p-4 transition-all hover:border-slate-300 hover:shadow-sm"
+                className="block rounded-xl border border-slate-200/90 bg-white p-4 transition-all hover:border-slate-300 hover:shadow-sm hover:bg-slate-50/30"
               >
                 <p className="text-slate-800 font-medium line-clamp-1">{c.title || 'Chat'}</p>
                 <p className="text-xs text-slate-500 mt-1">

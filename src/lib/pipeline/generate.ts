@@ -24,14 +24,14 @@ export interface GenConfig {
 }
 
 const DEFAULT_CONFIGS: GenConfig[] = [
-  { model: 'llama3.2', temperature: 0.3, maxTokens: 1024 },
-  { model: 'qwen', temperature: 0.35, maxTokens: 1024 },
-  { model: 'mistral', temperature: 0.3, maxTokens: 1024 },
-  { model: 'phi', temperature: 0.25, maxTokens: 1024 },
-  { model: 'gemma2', temperature: 0.3, maxTokens: 1024 },
+  { model: 'llama3.2', temperature: 0.3, maxTokens: 768 },
+  { model: 'qwen', temperature: 0.35, maxTokens: 768 },
+  { model: 'mistral', temperature: 0.3, maxTokens: 768 },
+  { model: 'phi', temperature: 0.25, maxTokens: 768 },
+  { model: 'gemma2', temperature: 0.3, maxTokens: 768 },
 ];
 
-const FAST_MAX_TOKENS = 512;
+const FAST_MAX_TOKENS = 768;
 
 export async function generateCandidates(
   taskType: TaskType,

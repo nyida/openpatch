@@ -14,7 +14,7 @@ export function DeleteRunButton({ runId }: { runId: string }) {
     <button
       type="button"
       onClick={handleDelete}
-      className="text-sm text-slate-500 hover:text-red-600 transition"
+      className="text-sm text-slate-500 hover:text-red-600 transition rounded-lg px-3 py-1.5 hover:bg-red-50"
     >
       Delete
     </button>

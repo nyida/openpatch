@@ -2,8 +2,15 @@ node_modules
 .next
 .env
 .env.local
+.env.*
+!.env.example
 *.log
 uploads
 .DS_Store
 dist
 coverage
+
+# Evals / research
+.cache/
+.venv-evals/
+app_runs/

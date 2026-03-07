@@ -24,7 +24,7 @@ export function stableKeyTemperature(temp: number): string {
  */
 export function runId(
   prompt: string,
-  mode: 'baseline' | 'improved',
+  mode: 'baseline' | 'improved' | 'standard',
   stableContext: string
 ): string {
   const payload = `${prompt}|${mode}|${stableContext}`;

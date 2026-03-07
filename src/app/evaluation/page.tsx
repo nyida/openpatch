@@ -168,13 +168,13 @@ export default function EvaluationPage() {
         </div>
 
         {error && (
-          <div className="rounded-none bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+          <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
             {error}
           </div>
         )}
 
         {log && (
-          <pre className="rounded-none bg-slate-50 border border-slate-200 p-4 text-xs text-slate-700 overflow-x-auto whitespace-pre-wrap">
+          <pre className="rounded-xl bg-slate-50 border border-slate-200 p-4 text-xs text-slate-700 overflow-x-auto whitespace-pre-wrap scroll-smooth">
             {log}
           </pre>
         )}
@@ -184,7 +184,7 @@ export default function EvaluationPage() {
             {results.summaryTableCsv && (
               <div>
                 <h2 className="text-sm font-semibold text-slate-800 mb-2">Summary table</h2>
-                <pre className="rounded-none bg-white border border-slate-200 p-4 text-xs overflow-x-auto whitespace-pre">
+                <pre className="rounded-xl bg-white border border-slate-200 p-4 text-xs overflow-x-auto whitespace-pre">
                   {results.summaryTableCsv}
                 </pre>
               </div>
@@ -192,19 +192,19 @@ export default function EvaluationPage() {
             {results.pairwiseCsv && (
               <div>
                 <h2 className="text-sm font-semibold text-slate-800 mb-2">Pairwise comparison</h2>
-                <pre className="rounded-none bg-white border border-slate-200 p-4 text-xs overflow-x-auto whitespace-pre max-h-60">
+                <pre className="rounded-xl bg-white border border-slate-200 p-4 text-xs overflow-x-auto whitespace-pre max-h-60">
                   {results.pairwiseCsv}
                 </pre>
               </div>
             )}
-            {results.bootstrap && typeof results.bootstrap === 'object' && (
+            {results.bootstrap && typeof results.bootstrap === 'object' ? (
               <div>
                 <h2 className="text-sm font-semibold text-slate-800 mb-2">Bootstrap (paired diff)</h2>
-                <pre className="rounded-none bg-white border border-slate-200 p-4 text-xs overflow-x-auto whitespace-pre">
+                <pre className="rounded-xl bg-white border border-slate-200 p-4 text-xs overflow-x-auto whitespace-pre">
                   {JSON.stringify(results.bootstrap, null, 2)}
                 </pre>
               </div>
-            )}
+            ) : null}
             {results.figures?.length > 0 && (
               <div>
                 <h2 className="text-sm font-semibold text-slate-800 mb-2">Figures</h2>
@@ -214,7 +214,7 @@ export default function EvaluationPage() {
                       <img
                         src={`/api/evaluation/figures/${encodeURIComponent(name)}`}
                         alt={name}
-                        className="max-w-full border border-slate-200"
+                        className="max-w-full border border-slate-200 rounded-lg"
                       />
                       <figcaption className="text-xs text-slate-500 mt-1">{name}</figcaption>
                     </figure>

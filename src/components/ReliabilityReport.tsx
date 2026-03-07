@@ -20,9 +20,9 @@ export function ReliabilityReport({ data }: { data: ReliabilityData }) {
         : 'bg-slate-100 text-slate-700 border-slate-200';
 
   return (
-    <div className="rounded-none border border-slate-200/80 bg-slate-50/50 p-4 space-y-3">
+    <div className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-4 space-y-3">
       <div className="flex items-center gap-2.5 flex-wrap">
-        <span className={`inline-flex items-center px-3 py-1.5 rounded-none text-xs font-semibold border ${confidenceColor}`}>
+        <span className={`inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold border ${confidenceColor}`}>
           {confidence === 'high' && '✓ High confidence'}
           {confidence === 'medium' && '○ Medium confidence'}
           {confidence === 'low' && '⚠ Low confidence'}

@@ -15,6 +15,7 @@ const sections = [
   { id: 'judge', title: '7. Judge & Selection' },
   { id: 'reliability', title: '8. Reliability Report' },
   { id: 'eval', title: '9. Evaluation' },
+  { id: 'cortex', title: '10. CORTEX (Optional Extension)' },
   { id: 'references', title: 'References & Further Reading' },
 ];
 
@@ -37,8 +38,9 @@ export function ResearchHeader() {
           OpenPatch: Methodology &amp; Research
         </h1>
         <p className="mt-4 text-lg text-slate-600 leading-relaxed max-w-2xl">
-          A system for higher correctness in language-model outputs via multi-model orchestration,
-          programmatic and model-based verification, and structured reliability reporting.
+          A verification-first pipeline for reliable language-model outputs: multi-model orchestration,
+          programmatic verification (arithmetic, citation, contradiction, safety), judge-based selection,
+          and structured reliability reporting. Optional CORTEX mode adds calibrated confidence and learned routing.
         </p>
         <div className="mt-6 flex flex-wrap items-center gap-3">
           <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 bg-slate-100 px-2 py-1 rounded-none">v1</span>

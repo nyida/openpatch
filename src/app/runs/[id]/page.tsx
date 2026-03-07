@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/db';
+import { getSession } from '@/lib/auth';
 import Link from 'next/link';
 import { DeleteRunButton } from './DeleteRunButton';
 import { ReliabilityReport } from '@/components/ReliabilityReport';
@@ -9,6 +10,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function RunTracePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const session = await getSession();
   const run = await prisma.run.findUnique({
     where: { id },
     include: {
@@ -19,29 +21,39 @@ export default async function RunTracePage({ params }: { params: Promise<{ id: s
     },
   });
   if (!run) notFound();
+  if (run.userId && run.userId !== session?.id) notFound();
 
   const reliability = run.reliability as Record<string, unknown> | null;
   const judge = run.judgeDecision;
   const urlImages = run.urlImages as Record<string, string[]> | null;
-  const sourceUrlsWithImages =
-    urlImages && run.retrievalChunks.length > 0
-      ? Array.from(new Set(run.retrievalChunks.map((c) => c.docId.replace(/_\d+$/, '')))).filter(
-          (baseUrl) => urlImages[baseUrl]?.length
-        )
-      : [];
+  const allUrlsWithImages = urlImages ? Object.entries(urlImages).filter(([, imgs]) => imgs?.length) : [];
 
-  const tavily = run.tavilySearchResults as {
+  type SearchResults = {
     query?: string;
     results?: Array<{ title?: string; url?: string; content?: string }>;
-    images?: Array<{ url?: string; description?: string }>;
-  } | null;
+    images?: Array<{ url?: string; description?: string; title?: string; thumbnail?: string; source?: string }>;
+  };
+  const tavily = run.tavilySearchResults as SearchResults | null;
+  const searxng = run.searxngSearchResults as SearchResults | null;
+  const crossref = run.crossrefSearchResults as SearchResults | null;
+  const wikipedia = run.wikipediaSearchResults as SearchResults | null;
+
+  const hasAnySources =
+    allUrlsWithImages.length > 0 ||
+    run.retrievalChunks.length > 0 ||
+    (tavily?.results?.length ?? 0) > 0 ||
+    (tavily?.images?.length ?? 0) > 0 ||
+    (searxng?.results?.length ?? 0) > 0 ||
+    (searxng?.images?.length ?? 0) > 0 ||
+    (crossref?.results?.length ?? 0) > 0 ||
+    (wikipedia?.results?.length ?? 0) > 0;
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-10 space-y-8">
       <div className="flex items-center justify-between">
         <Link
           href="/runs"
-          className="text-sm font-medium text-teal-600 hover:text-teal-700 transition-colors inline-flex items-center gap-1.5"
+          className="text-sm font-medium text-teal-600 hover:text-teal-700 transition-colors inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 -ml-1 hover:bg-teal-50/50"
         >
           <span aria-hidden>←</span> Back to Runs
         </Link>
@@ -65,90 +77,52 @@ export default async function RunTracePage({ params }: { params: Promise<{ id: s
         </div>
       </section>
 
-      {run.attachments.length > 0 && (
-        <section className="card">
-          <h2 className="section-label">Attachments</h2>
-          <ul className="text-sm text-slate-700 space-y-1">
-            {run.attachments.map((a) => (
-              <li key={a.id}>{a.originalName}</li>
-            ))}
-          </ul>
-        </section>
-      )}
+      <section className="card">
+        <h2 className="section-label">Sources used for this answer</h2>
+        <p className="text-sm text-slate-600 mb-4">
+          This is exactly what the model had access to: your documents and web search (if used).
+        </p>
 
-      {tavily && (tavily.results?.length || tavily.images?.length) && (
-        <section className="card">
-          <h2 className="section-label">Web search</h2>
-          {tavily.results && tavily.results.length > 0 && (
-            <ul className="space-y-2 mb-4">
-              {tavily.results.map((r, i) => (
-                <li key={i} className="text-sm">
-                  <a
-                    href={r.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-teal-600 hover:text-teal-700 font-medium"
-                  >
-                    {r.title || r.url}
-                  </a>
-                  {r.content && <p className="text-slate-600 mt-0.5 line-clamp-2">{r.content}</p>}
-                </li>
+        {!hasAnySources && (
+          <p className="text-slate-500 text-sm italic">
+            No retrieval or search was used; the answer was generated from the model&apos;s training only.
+          </p>
+        )}
+
+        {run.attachments.length > 0 && (
+          <div className="mb-6">
+            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Your attachments</h3>
+            <ul className="text-sm text-slate-700 space-y-1">
+              {run.attachments.map((a) => (
+                <li key={a.id}>{a.originalName}</li>
               ))}
             </ul>
-          )}
-          {tavily.images && tavily.images.length > 0 && (
-            <div>
-              <p className="text-xs text-slate-500 mb-2">Images from search</p>
-              <div className="flex flex-wrap gap-2">
-                {tavily.images.map((img, i) => (
-                  <a
-                    key={i}
-                    href={img.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block rounded-none overflow-hidden border border-slate-200 hover:border-slate-400 transition-colors"
-                  >
-                    <img
-                      src={img.url}
-                      alt={img.description ?? ''}
-                      className="h-24 w-auto object-cover max-w-[200px]"
-                    />
-                    {img.description && (
-                      <p className="text-xs text-slate-500 p-1.5 max-w-[200px] line-clamp-2">{img.description}</p>
-                    )}
-                  </a>
-                ))}
-              </div>
-            </div>
-          )}
-        </section>
-      )}
+          </div>
+        )}
 
-      {run.retrievalChunks.length > 0 && (
-        <section className="card">
-          <h2 className="section-label">
-            Retrieval ({run.retrievalChunks.length} chunks)
-          </h2>
-          {sourceUrlsWithImages.length > 0 && (
-            <div className="mb-4 space-y-3">
-              {sourceUrlsWithImages.map((baseUrl) => (
+        {allUrlsWithImages.length > 0 && (
+          <div className="mb-6">
+            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Images from your URLs</h3>
+            <div className="space-y-4">
+              {allUrlsWithImages.map(([baseUrl, imgs]) => (
                 <div key={baseUrl}>
-                  <p className="text-xs text-slate-500 mb-2 truncate" title={baseUrl}>
-                    Images from page
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {(urlImages![baseUrl] ?? []).map((imgUrl) => (
+                  <p className="text-xs text-slate-500 truncate mb-2" title={baseUrl}>{baseUrl}</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                    {(imgs ?? []).map((imgUrl) => (
                       <a
                         key={imgUrl}
                         href={imgUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="block rounded-none overflow-hidden border border-slate-200 hover:border-slate-400 transition-colors"
+                        className="group block rounded-lg overflow-hidden border border-slate-200 hover:border-teal-400 hover:shadow-md transition-all duration-200"
                       >
                         <img
                           src={imgUrl}
                           alt=""
-                          className="h-24 w-auto object-cover max-w-[200px]"
+                          className="w-full h-28 object-cover group-hover:scale-105 transition-transform duration-200"
+                          loading="lazy"
+                          referrerPolicy="no-referrer"
+                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                         />
                       </a>
                     ))}
@@ -156,20 +130,146 @@ export default async function RunTracePage({ params }: { params: Promise<{ id: s
                 </div>
               ))}
             </div>
-          )}
-          <div className="space-y-2 max-h-64 overflow-auto">
-            {run.retrievalChunks.slice(0, 10).map((c) => (
-              <div
-                key={c.id}
-                className="text-sm bg-slate-50/80 rounded-none p-3.5 border border-slate-200/60"
-              >
-                <span className="text-xs text-slate-500">score {c.score.toFixed(3)}</span>
-                <p className="text-slate-700 mt-1 line-clamp-2">{c.text}</p>
-              </div>
-            ))}
           </div>
-        </section>
-      )}
+        )}
+
+        {run.retrievalChunks.length > 0 && (
+          <div className="mb-6">
+            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+              Retrieval from your URLs/documents ({run.retrievalChunks.length} chunks)
+            </h3>
+            <div className="space-y-2 max-h-56 overflow-auto scroll-smooth">
+              {run.retrievalChunks.slice(0, 10).map((c) => (
+                <div key={c.id} className="text-sm bg-slate-50/80 rounded-lg p-3 border border-slate-200/60 hover:border-slate-300 transition-colors">
+                  <span className="text-xs font-medium text-slate-500">score {c.score.toFixed(3)}</span>
+                  <p className="text-slate-700 mt-1 line-clamp-2">{c.text}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {searxng?.results && searxng.results.length > 0 && (
+          <div className="mb-6">
+            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Web search (SearXNG)</h3>
+            <ul className="space-y-3">
+              {searxng.results.map((r, i) => (
+                <li key={i} className="text-sm p-3 rounded-lg bg-slate-50/80 border border-slate-200/60 hover:border-slate-300 transition-colors">
+                  <a href={r.url} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:text-teal-700 font-medium">
+                    {r.title || r.url}
+                  </a>
+                  {r.content && <p className="text-slate-600 mt-0.5 line-clamp-2">{r.content}</p>}
+                </li>
+              ))}
+            </ul>
+            {searxng.images && searxng.images.filter((img) => img.url).length > 0 && (
+              <div className="mt-4">
+                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-3">Images from search</p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                  {searxng.images.filter((img) => img.url).slice(0, 12).map((img, i) => (
+                    <a
+                      key={i}
+                      href={img.source || img.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group block rounded-lg overflow-hidden border border-slate-200 hover:border-teal-400 hover:shadow-md transition-all duration-200"
+                    >
+                      <img
+                        src={img.thumbnail || img.url!}
+                        alt={img.title || img.description || 'Search result'}
+                        className="w-full h-28 object-cover group-hover:scale-105 transition-transform duration-200"
+                        loading="lazy"
+                        referrerPolicy="no-referrer"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                      />
+                      {img.title && (
+                        <p className="text-xs text-slate-600 px-2 py-1.5 line-clamp-2 bg-white">{img.title}</p>
+                      )}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {tavily?.results && tavily.results.length > 0 && (
+          <div className="mb-6">
+            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Web search (Tavily)</h3>
+            <ul className="space-y-3">
+              {tavily.results.map((r, i) => (
+                <li key={i} className="text-sm p-3 rounded-lg bg-slate-50/80 border border-slate-200/60 hover:border-slate-300 transition-colors">
+                  <a href={r.url} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:text-teal-700 font-medium">
+                    {r.title || r.url}
+                  </a>
+                  {r.content && <p className="text-slate-600 mt-0.5 line-clamp-2">{r.content}</p>}
+                </li>
+              ))}
+            </ul>
+            {tavily.images && tavily.images.filter((img) => img.url).length > 0 && (
+              <div className="mt-4">
+                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-3">Images from search</p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                  {tavily.images.filter((img) => img.url).slice(0, 12).map((img, i) => (
+                    <a
+                      key={i}
+                      href={img.url!}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group block rounded-lg overflow-hidden border border-slate-200 hover:border-teal-400 hover:shadow-md transition-all duration-200"
+                    >
+                      <img
+                        src={img.url!}
+                        alt={img.description ?? ''}
+                        className="w-full h-28 object-cover group-hover:scale-105 transition-transform duration-200"
+                        loading="lazy"
+                        referrerPolicy="no-referrer"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                      />
+                      {img.description && (
+                        <p className="text-xs text-slate-600 px-2 py-1.5 line-clamp-2 bg-white">{img.description}</p>
+                      )}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {crossref?.results && crossref.results.length > 0 && (
+          <div className="mb-6">
+            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Crossref (research metadata)</h3>
+            <ul className="space-y-3">
+              {crossref.results.map((r, i) => (
+                <li key={i} className="text-sm p-3 rounded-lg bg-slate-50/80 border border-slate-200/60 hover:border-slate-300 transition-colors">
+                  <a href={r.url} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:text-teal-700 font-medium">
+                    {r.title || r.url}
+                  </a>
+                  {r.content && <p className="text-slate-600 mt-0.5 line-clamp-2">{r.content}</p>}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {wikipedia?.results && wikipedia.results.length > 0 && (
+          <div className="mb-6">
+            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Wikipedia</h3>
+            <ul className="space-y-3">
+              {wikipedia.results.map((r, i) => (
+                <li key={i} className="text-sm p-3 rounded-lg bg-slate-50/80 border border-slate-200/60 hover:border-slate-300 transition-colors">
+                  <a href={r.url} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:text-teal-700 font-medium">
+                    {r.title || r.url}
+                  </a>
+                  {r.content && <p className="text-slate-600 mt-0.5 line-clamp-2">{r.content}</p>}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+      </section>
 
       <section className="card">
         <h2 className="section-label">Candidates</h2>
@@ -177,7 +277,7 @@ export default async function RunTracePage({ params }: { params: Promise<{ id: s
           {run.candidates.map((c) => (
             <div
               key={c.id}
-              className="rounded-none border border-slate-200/90 p-5 bg-slate-50/40"
+              className="rounded-lg border border-slate-200/90 p-5 bg-slate-50/40 hover:border-slate-300 transition-colors"
             >
               <p className="text-xs font-medium text-slate-500">{c.modelName} · {c.latencyMs ?? 0}ms</p>
               <div className="text-slate-800 mt-2 text-sm leading-relaxed">

@@ -78,8 +78,8 @@ export async function complete(
   if (seedNum !== undefined) (opts as { seed?: number }).seed = seedNum;
 
   try {
-    const resp = await client.chat.completions.create({ model, ...opts } as Parameters<typeof client.chat.completions.create>[0]);
-    const choice = resp.choices[0];
+    const resp = await client.chat.completions.create({ model, stream: false, ...opts } as never);
+    const choice = (resp as { choices?: { message?: { content?: string } }[] }).choices?.[0];
     if (!choice?.message?.content) throw new Error('Empty completion from Ollama');
     logger.debug('Ollama complete', { model, messageCount: messages.length });
     return choice.message.content;
@@ -92,8 +92,8 @@ export async function complete(
     if (isModelNotFoundError(err) && fallbackModel && fallbackModel !== model) {
       logger.warn(`Ollama model ${model} not found, trying ${fallbackModel}`);
       try {
-        const resp = await client.chat.completions.create({ ...opts, model: fallbackModel });
-        const choice = resp.choices[0];
+        const resp = await client.chat.completions.create({ ...opts, model: fallbackModel, stream: false } as never);
+        const choice = (resp as { choices?: { message?: { content?: string } }[] }).choices?.[0];
         if (!choice?.message?.content) throw new Error('Empty completion from Ollama');
         return choice.message.content;
       } catch (fallbackErr) {

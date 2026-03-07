@@ -5,7 +5,7 @@ import { parseAnswer } from '@/lib/parse-answer';
 
 const DEFAULT_MODEL = process.env.OLLAMA_MODEL ?? 'llama3.2';
 const DEFAULT_TEMP = 0.3;
-const DEFAULT_MAX_TOKENS = 1024;
+const DEFAULT_MAX_TOKENS = 768;
 
 export interface BaselineInput {
   prompt: string;

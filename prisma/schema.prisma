@@ -39,7 +39,11 @@ model Run {
   finalAnswer        String?
   reliability        Json?
   urlImages          Json?
-  tavilySearchResults Json?
+  tavilySearchResults     Json?
+  searxngSearchResults    Json?
+  crossrefSearchResults  Json?
+  wikipediaSearchResults Json?
+  coreSearchResults      Json?
   attachments        Attachment[]
   retrievalChunks RetrievalChunk[]
   candidates   Candidate[]

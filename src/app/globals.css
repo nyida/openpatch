@@ -31,6 +31,11 @@
   --ring: 0 0 0 3px rgba(5, 150, 105, 0.15);
 }
 
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 4rem;
+}
+
 body {
   background: var(--bg-app);
   color: var(--text-primary);
@@ -57,7 +62,7 @@ body {
 
 /* Hero CTA button */
 .btn-hero {
-  @apply inline-flex items-center justify-center font-bold rounded-none px-8 py-4 text-base text-slate-800 transition-all duration-300 shadow-lg;
+  @apply inline-flex items-center justify-center font-bold rounded-xl px-8 py-4 text-base text-slate-800 transition-all duration-300 shadow-lg;
   background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 50%, #f0fdf4 100%);
   background-size: 200% 200%;
   box-shadow: 0 2px 8px -2px rgba(0,0,0,0.06);
@@ -86,7 +91,7 @@ body {
 
 @layer components {
   .btn-primary {
-    @apply inline-flex items-center justify-center font-semibold rounded-none px-5 py-2.5 text-[15px] text-slate-800 transition-all duration-200;
+    @apply inline-flex items-center justify-center font-semibold rounded-lg px-5 py-2.5 text-[15px] text-slate-800 transition-all duration-200;
     background: var(--accent);
     box-shadow: var(--shadow-xs);
   }
@@ -102,7 +107,7 @@ body {
     @apply opacity-50 cursor-not-allowed;
   }
   .btn-secondary {
-    @apply inline-flex items-center justify-center font-medium rounded-none px-5 py-2.5 text-[15px] border transition-all duration-200;
+    @apply inline-flex items-center justify-center font-medium rounded-lg px-5 py-2.5 text-[15px] border transition-all duration-200;
     border-color: var(--border);
     color: var(--text-secondary);
     background: var(--bg-surface);
@@ -114,7 +119,7 @@ body {
   }
   .card {
     background: var(--bg-surface);
-    border-radius: 0;
+    border-radius: 0.75rem;
     border: 1px solid var(--border-soft);
     box-shadow: var(--shadow-xs);
     @apply p-6;
@@ -127,7 +132,7 @@ body {
     border-color: var(--border);
   }
   .input-base {
-    @apply w-full rounded-none border px-4 py-3 text-[15px] transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-teal-500/25 focus:border-teal-500;
+    @apply w-full rounded-lg border px-4 py-3 text-[15px] transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-teal-500/25 focus:border-teal-500;
     border-color: var(--border);
     background: var(--bg-surface);
   }
@@ -135,34 +140,67 @@ body {
     color: var(--text-muted);
   }
   .badge {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded-none text-[11px] font-semibold uppercase tracking-wider;
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-md text-[11px] font-semibold uppercase tracking-wider;
   }
   .section-label {
     @apply text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-3;
   }
 }
 
-/* Smooth scroll for chat */
-.overflow-y-auto {
+/* Smooth scroll */
+.overflow-y-auto,
+.overflow-auto,
+.overflow-x-auto {
   scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
 }
 
-/* Chat scrollbar */
+/* Chat scrollbar – subtle, polished */
 .chat-scroll {
   scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
 }
 .chat-scroll::-webkit-scrollbar {
-  width: 8px;
+  width: 6px;
 }
 .chat-scroll::-webkit-scrollbar-track {
   background: transparent;
 }
 .chat-scroll::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 0;
+  background: rgba(148, 163, 184, 0.35);
+  border-radius: 3px;
+  transition: background 0.2s ease;
 }
 .chat-scroll::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: rgba(148, 163, 184, 0.6);
+}
+.chat-scroll::-webkit-scrollbar-thumb:active {
+  background: rgba(148, 163, 184, 0.8);
+}
+
+/* Global scrollbar for overflow areas */
+.scroll-smooth::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.scroll-smooth::-webkit-scrollbar-track {
+  background: rgba(241, 245, 249, 0.8);
+  border-radius: 4px;
+}
+.scroll-smooth::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.4);
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+.scroll-smooth::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.65);
+}
+.scroll-smooth::-webkit-scrollbar-thumb:active {
+  background: rgba(148, 163, 184, 0.85);
+}
+.scroll-smooth {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Research / academic page */
@@ -238,6 +276,8 @@ body {
   overflow-x: auto;
   font-size: 0.9em;
   line-height: 1.5;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
 }
 .markdown-content code {
   font-family: ui-monospace, monospace;
@@ -255,6 +295,7 @@ body {
   height: auto;
   border-radius: 0.5rem;
   margin: 0.4em 0;
+  display: block;
 }
 .markdown-content hr {
   margin: 0.75em 0;
@@ -262,35 +303,48 @@ body {
   border-top: 1px solid var(--border-soft);
 }
 .markdown-content a {
-  color: var(--accent);
+  color: var(--accent-muted);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 .markdown-content a:hover {
-  color: var(--accent-hover);
+  color: #0d9488;
 }
 
-/* KaTeX inside markdown: inline and block math */
+/* KaTeX: high-quality LaTeX rendering */
 .markdown-content .katex {
-  font-size: 1.05em;
+  font-size: 1.1em;
+  font-family: KaTeX_Main, 'Times New Roman', serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 .markdown-content .katex-display {
   display: block;
-  margin: 0.6em 0;
-  padding: 0.5em 0;
+  margin: 1em 0;
+  padding: 1em 1.25em;
   overflow-x: auto;
   overflow-y: hidden;
   text-align: center;
   -webkit-overflow-scrolling: touch;
+  background: linear-gradient(to right, rgba(248, 250, 252, 0.95), rgba(241, 245, 249, 0.95));
+  border-left: 4px solid rgb(20, 184, 166);
+  border-radius: 0 0.5rem 0.5rem 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 .markdown-content .katex-display > .katex {
-  font-size: 1.1em;
+  font-size: 1.2em;
   white-space: nowrap;
 }
 .markdown-content .katex-display::-webkit-scrollbar {
-  height: 4px;
+  height: 8px;
 }
 .markdown-content .katex-display::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #94a3b8;
   border-radius: 4px;
+}
+.markdown-content .katex-display::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+.markdown-content .katex-display::-webkit-scrollbar-track {
+  background: #f1f5f9;
 }

@@ -1,0 +1,85 @@
+# File map: OpenPatch and CORTEX (paths only)
+
+## OpenPatch
+
+### Pipeline entry and branching
+src/lib/pipeline/run.ts
+src/lib/pipeline/baseline.ts
+src/lib/pipeline/improved.ts
+src/lib/pipeline/generate.ts
+src/lib/pipeline/types.ts
+src/lib/pipeline/router.ts
+
+### Verifiers
+src/lib/verifiers/index.ts
+src/lib/verifiers/calculator.ts
+src/lib/verifiers/citation.ts
+src/lib/verifiers/claims.ts
+src/lib/verifiers/contradiction.ts
+src/lib/verifiers/safety.ts
+
+### Judge
+src/lib/pipeline/judge.ts
+
+### Reliability report and persistence/trace
+src/lib/pipeline/reliability.ts
+src/lib/run-log.ts
+src/lib/seed.ts
+
+### Eval surfaces (in-app and external harness)
+src/app/api/run/route.ts
+src/app/api/eval/run-one/route.ts
+src/app/api/evals/run/route.ts
+src/app/api/evaluation/run/route.ts
+src/app/api/evaluation/score/route.ts
+src/app/api/evaluation/analyze/route.ts
+src/app/api/evaluation/results/route.ts
+src/app/api/evaluation/figures/[name]/route.ts
+evals/run.py
+evals/score.py
+evals/analyze.py
+
+### Determinism (runId + seeding)
+src/lib/seed.ts
+src/lib/run-log.ts
+
+### Config for external harness
+evals/configs/main.yaml
+
+### Prisma schema (OpenPatch persistence)
+prisma/schema.prisma
+
+
+## CORTEX
+
+### Inference
+cortex/backend/inference.py
+
+### Confidence features
+cortex/backend/confidence.py
+
+### Calibration (temperature scaling)
+cortex/backend/calibration.py
+cortex/backend/calibration_train.py
+
+### Routing (router inference)
+cortex/backend/routing.py
+
+### Router training
+cortex/backend/router_train.py
+
+### Experiment runner
+cortex/backend/experiment_runner.py
+
+### Evaluation
+cortex/backend/evaluate.py
+
+### run_all script
+cortex/scripts/run_all.py
+
+### SQLite schema (CORTEX)
+cortex/backend/database.py
+
+### CORTEX API and correctness
+cortex/backend/main.py
+cortex/backend/correctness.py

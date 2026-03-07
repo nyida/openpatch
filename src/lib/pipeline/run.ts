@@ -14,6 +14,9 @@ import {
 import { logger } from '@/lib/logger';
 import { readAttachmentContent } from '@/lib/storage';
 import { tavilySearch } from '@/lib/tavily';
+import { searchWeb } from '@/lib/searxng';
+import { crossrefSearch } from '@/lib/crossref';
+import { wikipediaSearch } from '@/lib/wikipedia';
 import { runBaseline } from './baseline';
 import { runImproved } from './improved';
 import { appendRun, runId as runIdFromLog, type RunRecord } from '@/lib/run-log';
@@ -47,21 +50,19 @@ export async function executeRun(input: RunInput): Promise<RunPipelineResult> {
   logger.info('Run started', { runId, inputLen: input.inputText.length });
 
   if (input.attachmentIds?.length) {
-    for (const attId of input.attachmentIds) {
-      await prisma.attachment.create({
-        data: {
-          runId,
-          type: 'file',
-          originalName: attId,
-          storagePath: `${process.env.UPLOAD_DIR ?? 'uploads'}/${attId}`,
-          url: null,
-        },
-      });
-    }
+    await prisma.attachment.createMany({
+      data: input.attachmentIds.map((attId) => ({
+        runId,
+        type: 'file',
+        originalName: input.attachmentNames?.[attId] ?? attId,
+        storagePath: `${process.env.UPLOAD_DIR ?? 'uploads'}/${attId}`,
+        url: null,
+      })),
+    });
   }
 
   const hasAttachments = (input.attachmentIds?.length ?? 0) > 0 || (input.urls?.length ?? 0) > 0;
-  const candidateCount = Math.min(5, Math.max(1, parseInt(process.env.CANDIDATE_COUNT ?? '1', 10) || 1));
+  const candidateCount = Math.min(5, Math.max(1, parseInt(process.env.CANDIDATE_COUNT ?? '3', 10) || 3));
   const skipRouter = process.env.SKIP_ROUTER !== 'false';
   const taskType = skipRouter ? 'unknown' : await classifyTask(input.inputText, hasAttachments, defaultLLM);
   await prisma.run.update({ where: { id: runId }, data: { taskType } });
@@ -69,19 +70,29 @@ export async function executeRun(input: RunInput): Promise<RunPipelineResult> {
   let chunks: RetrievalChunkData[] = [];
   let docChunks: { docId: string; text: string }[] = [];
 
-  if (input.attachmentIds?.length) {
-    for (const attId of input.attachmentIds) {
-      const content = await readAttachmentContent(attId);
-      if (content) docChunks.push(...chunkDocument(content, attId));
-    }
-  }
+  const [attachmentChunks, urlResults] = await Promise.all([
+    input.attachmentIds?.length
+      ? Promise.all(input.attachmentIds.map((attId) => readAttachmentContent(attId)))
+          .then((contents) =>
+            contents.flatMap((content, i) =>
+              content ? chunkDocument(content, input.attachmentIds![i]) : []
+            )
+          )
+      : Promise.resolve([]),
+    input.urls?.length
+      ? (async () => {
+          const { fetchUrlContentAndImages } = await import('@/lib/urls');
+          return Promise.all(input.urls!.map((url) => fetchUrlContentAndImages(url)));
+        })()
+      : Promise.resolve([]),
+  ]);
+  for (const c of attachmentChunks) docChunks.push(c);
   const urlImages: Record<string, string[]> = {};
   if (input.urls?.length) {
-    const { fetchUrlContentAndImages } = await import('@/lib/urls');
-    for (const url of input.urls) {
-      const { text: content, imageUrls } = await fetchUrlContentAndImages(url);
-      if (content) docChunks.push(...chunkDocument(content, url));
-      if (imageUrls.length > 0) urlImages[url] = imageUrls;
+    for (let i = 0; i < input.urls.length; i++) {
+      const { text: content, imageUrls } = urlResults[i];
+      if (content) docChunks.push(...chunkDocument(content, input.urls[i]));
+      if (imageUrls.length > 0) urlImages[input.urls[i]] = imageUrls;
     }
   }
   if (docChunks.length > 0) {
@@ -98,15 +109,58 @@ export async function executeRun(input: RunInput): Promise<RunPipelineResult> {
   }
 
   let contextExcerpts = chunks.map((c) => c.text);
-  let tavilyData: Awaited<ReturnType<typeof tavilySearch>> = null;
-  const useTavily = process.env.TAVILY_ENABLED === 'true' && !input.attachmentIds?.length && !input.urls?.length;
-  if (useTavily) {
-    tavilyData = await tavilySearch(input.inputText);
-    if (tavilyData?.results?.length) {
-      const webContext = tavilyData.results.map(
-        (r) => `[${r.title}](${r.url}): ${r.content}`
-      );
-      contextExcerpts = [...contextExcerpts, ...webContext];
+  const searchQuery = input.inputText.trim();
+  const useTavily = process.env.TAVILY_ENABLED === 'true' && searchQuery.length > 0;
+  const useSearXNG = process.env.SEARXNG_ENABLED === 'true' && searchQuery.length > 0 && !useTavily;
+
+  const [tavilyData, searxngData, crossrefData, wikipediaData] = await Promise.all([
+    useTavily ? tavilySearch(searchQuery) : Promise.resolve(null),
+    useSearXNG ? searchWeb(searchQuery, { maxResults: 8, maxImages: 8, includeImages: true }) : Promise.resolve(null),
+    searchQuery ? crossrefSearch(searchQuery, { maxResults: 5 }) : Promise.resolve(null),
+    searchQuery ? wikipediaSearch(searchQuery, { maxResults: 5 }) : Promise.resolve(null),
+  ]);
+
+  if (tavilyData?.results?.length) {
+    const webContext = tavilyData.results.map(
+      (r) => `[${r.title}](${r.url}): ${r.content}`
+    );
+    contextExcerpts = [...contextExcerpts, ...webContext];
+  }
+  if (searxngData?.results?.length) {
+    const webContext = searxngData.results.map(
+      (r) => `[${r.title}](${r.url}): ${r.content}`
+    );
+    contextExcerpts = [...contextExcerpts, ...webContext];
+  }
+  if (searxngData?.images?.length) {
+    const imageContext = searxngData.images
+      .filter((img) => img.url)
+      .slice(0, 8)
+      .map((img) => `Image (${img.title || 'diagram'}): ${img.url}`);
+    contextExcerpts = [...contextExcerpts, ...imageContext];
+  }
+  if (crossrefData?.results?.length) {
+    const crossrefContext = crossrefData.results.map(
+      (r) => `[${r.title}](${r.url}): ${r.content}`
+    );
+    contextExcerpts = [...contextExcerpts, ...crossrefContext];
+  }
+  if (wikipediaData?.results?.length) {
+    const wikiContext = wikipediaData.results.map(
+      (r) => `[${r.title}](${r.url}): ${r.content}`
+    );
+    contextExcerpts = [...contextExcerpts, ...wikiContext];
+  }
+  if (tavilyData?.images?.length) {
+    const imageContext = tavilyData.images
+      .filter((img) => img.url)
+      .slice(0, 8)
+      .map((img) => `Image (${img.description || 'diagram'}): ${img.url}`);
+    contextExcerpts = [...contextExcerpts, ...imageContext];
+  }
+  for (const [url, imgs] of Object.entries(urlImages)) {
+    if (imgs?.length) {
+      contextExcerpts = [...contextExcerpts, `Images from ${url}: ${imgs.slice(0, 6).join(', ')}`];
     }
   }
 
@@ -114,7 +168,8 @@ export async function executeRun(input: RunInput): Promise<RunPipelineResult> {
     contextExcerpts.length > 0
       ? `Relevant context:\n${contextExcerpts.map((c, i) => `[${i + 1}] ${c}`).join('\n\n')}\n\nUser question: ${input.inputText}`
       : input.inputText;
-  const systemPrompt = 'You are a helpful assistant. Answer clearly and concisely. Be accurate. For math, show your work.';
+  const systemPrompt = `You are a helpful assistant. Answer clearly and thoroughly. Be accurate. For math, show your work.
+When explaining visual concepts (e.g. chess pieces, board layouts, diagrams), reference the images provided in the context. You may include markdown image syntax ![description](url) to show relevant images when they would help the reader. Keep responses substantive but focused—avoid unnecessary padding.`;
 
   if (typeof input.improvedMode === 'boolean') {
     const mode = input.improvedMode ? 'improved' : 'baseline';
@@ -148,7 +203,16 @@ export async function executeRun(input: RunInput): Promise<RunPipelineResult> {
       );
       await prisma.run.update({
         where: { id: runId },
-        data: { finalAnswer: result.final_answer, latencyMs, reliability: reliability as object },
+        data: {
+          finalAnswer: result.final_answer,
+          latencyMs,
+          reliability: reliability as object,
+          ...(Object.keys(urlImages).length > 0 ? { urlImages: urlImages as object } : {}),
+          ...(tavilyData ? { tavilySearchResults: tavilyData as object } : {}),
+          ...(searxngData ? { searxngSearchResults: searxngData as object } : {}),
+          ...(crossrefData ? { crossrefSearchResults: crossrefData as object } : {}),
+          ...(wikipediaData ? { wikipediaSearchResults: wikipediaData as object } : {}),
+        },
       });
       return { runId, finalAnswer: result.final_answer, reliability, latencyMs, runTrace: runRecord };
     } else {
@@ -174,7 +238,16 @@ export async function executeRun(input: RunInput): Promise<RunPipelineResult> {
       );
       await prisma.run.update({
         where: { id: runId },
-        data: { finalAnswer: result.final_answer, latencyMs, reliability: reliability as object },
+        data: {
+          finalAnswer: result.final_answer,
+          latencyMs,
+          reliability: reliability as object,
+          ...(Object.keys(urlImages).length > 0 ? { urlImages: urlImages as object } : {}),
+          ...(tavilyData ? { tavilySearchResults: tavilyData as object } : {}),
+          ...(searxngData ? { searxngSearchResults: searxngData as object } : {}),
+          ...(crossrefData ? { crossrefSearchResults: crossrefData as object } : {}),
+          ...(wikipediaData ? { wikipediaSearchResults: wikipediaData as object } : {}),
+        },
       });
       return { runId, finalAnswer: result.final_answer, reliability, latencyMs, runTrace: runRecord };
     }
@@ -188,21 +261,19 @@ export async function executeRun(input: RunInput): Promise<RunPipelineResult> {
     input.conversationHistory
   );
 
-  const candidateIds: string[] = [];
-  for (const g of genResults) {
-    const c = await prisma.candidate.create({
-      data: {
-        runId,
-        modelName: g.config.model,
-        promptHash: g.promptHash,
-        outputText: g.output,
-        tokenCounts: { prompt: g.tokenEstimate[0], completion: g.tokenEstimate[1] },
-        latencyMs: g.latencyMs,
-      },
-    });
-    candidateIds.push(c.id);
-  }
+  const createdCandidates = await prisma.candidate.createManyAndReturn({
+    data: genResults.map((g) => ({
+      runId,
+      modelName: g.config.model,
+      promptHash: g.promptHash,
+      outputText: g.output,
+      tokenCounts: { prompt: g.tokenEstimate[0], completion: g.tokenEstimate[1] },
+      latencyMs: g.latencyMs,
+    })),
+  });
+  const candidateIds = createdCandidates.map((c) => c.id);
 
+  const verificationRows: { candidateId: string; type: string; resultJson: object; passFail: boolean; notes: string | null }[] = [];
   const candidatesWithVerifications: {
     id: string;
     data: { modelName: string; promptHash: string; outputText: string; tokenCounts?: { prompt: number; completion: number }; latencyMs: number };
@@ -212,33 +283,13 @@ export async function executeRun(input: RunInput): Promise<RunPipelineResult> {
   for (let i = 0; i < genResults.length; i++) {
     const candId = candidateIds[i];
     const output = genResults[i].output;
-    const verifications: VerificationResult[] = [];
-
     const calcResult = verifyArithmetic(output);
-    verifications.push(calcResult);
-    await prisma.verification.create({
-      data: {
-        candidateId: candId,
-        type: calcResult.type,
-        resultJson: calcResult.resultJson as object,
-        passFail: calcResult.pass,
-        notes: calcResult.notes ?? null,
-      },
-    });
-
     const safetyResult = verifySafety(input.inputText, output);
-    verifications.push(safetyResult);
-    await prisma.verification.create({
-      data: {
-        candidateId: candId,
-        type: safetyResult.type,
-        resultJson: safetyResult.resultJson as object,
-        passFail: safetyResult.pass,
-        notes: safetyResult.notes ?? null,
-      },
-    });
-
-    const cand = await prisma.candidate.findUnique({ where: { id: candId } });
+    verificationRows.push(
+      { candidateId: candId, type: calcResult.type, resultJson: calcResult.resultJson as object, passFail: calcResult.pass, notes: calcResult.notes ?? null },
+      { candidateId: candId, type: safetyResult.type, resultJson: safetyResult.resultJson as object, passFail: safetyResult.pass, notes: safetyResult.notes ?? null }
+    );
+    const cand = createdCandidates[i];
     if (cand)
       candidatesWithVerifications.push({
         id: candId,
@@ -249,8 +300,13 @@ export async function executeRun(input: RunInput): Promise<RunPipelineResult> {
           tokenCounts: cand.tokenCounts as { prompt: number; completion: number } | undefined,
           latencyMs: cand.latencyMs ?? 0,
         },
-        verifications,
+        verifications: [calcResult, safetyResult],
       });
+  }
+  if (verificationRows.length > 0) {
+    await prisma.verification.createMany({
+      data: verificationRows,
+    });
   }
 
   const singleCandidate = candidatesWithVerifications.length === 1;
@@ -313,6 +369,9 @@ export async function executeRun(input: RunInput): Promise<RunPipelineResult> {
       costEstimate: null,
       ...(Object.keys(urlImages).length > 0 ? { urlImages: urlImages as object } : {}),
       ...(tavilyData ? { tavilySearchResults: tavilyData as object } : {}),
+      ...(searxngData ? { searxngSearchResults: searxngData as object } : {}),
+      ...(crossrefData ? { crossrefSearchResults: crossrefData as object } : {}),
+      ...(wikipediaData ? { wikipediaSearchResults: wikipediaData as object } : {}),
     },
   });
 

@@ -16,10 +16,13 @@
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
+    "@supabase/ssr": "^0.9.0",
+    "@supabase/supabase-js": "^2.98.0",
     "bcryptjs": "^2.4.3",
     "cheerio": "^1.0.0",
     "framer-motion": "^12.34.0",
     "katex": "^0.16.28",
+    "lucide-react": "^0.575.0",
     "mammoth": "^1.8.0",
     "mathjs": "^13.0.0",
     "nanoid": "^5.0.9",

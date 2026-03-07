@@ -9,6 +9,8 @@ export interface RunInput {
   inputText: string;
   urls?: string[];
   attachmentIds?: string[];
+  /** Map of attachment id -> display name for trace */
+  attachmentNames?: Record<string, string>;
   userId?: string;
   /** Previous messages for multi-turn chat. Each turn is a full run; history is sent so the model has context. */
   conversationHistory?: { role: string; content: string }[];

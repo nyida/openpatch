@@ -103,6 +103,14 @@ def main() -> None:
         correct = bool(parsed and _correct(parsed, gt))
         invalid = not parsed or _invalid_format(rec)
         latency_ms = rec.get("latency_ms") or 0
+        confidence = out.get("confidence")
+        if confidence is not None:
+            try:
+                confidence = float(confidence)
+            except (TypeError, ValueError):
+                confidence = ""
+        else:
+            confidence = ""
         rows.append({
             "dataset_id": dataset_id,
             "item_id": item_id,
@@ -110,39 +118,73 @@ def main() -> None:
             "correct": 1 if correct else 0,
             "invalid_format": 1 if invalid else 0,
             "latency_ms": latency_ms,
+            "confidence": confidence,
         })
 
     # Aggregate per mode
     from collections import defaultdict
-    by_mode = defaultdict(lambda: {"correct": [], "invalid": [], "latency": []})
+    by_mode = defaultdict(lambda: {"correct": [], "invalid": [], "latency": [], "confidence": [], "correct_list": []})
     for r in rows:
         by_mode[r["mode"]]["correct"].append(r["correct"])
         by_mode[r["mode"]]["invalid"].append(r["invalid_format"])
         by_mode[r["mode"]]["latency"].append(r["latency_ms"])
+        if r.get("confidence") != "" and r.get("confidence") is not None:
+            try:
+                by_mode[r["mode"]]["confidence"].append(float(r["confidence"]))
+                by_mode[r["mode"]]["correct_list"].append(r["correct"])
+            except (TypeError, ValueError):
+                pass
 
     metrics_path = results_dir / "metrics.csv"
     with open(metrics_path, "w", encoding="utf-8", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=["dataset_id", "item_id", "mode", "correct", "invalid_format", "latency_ms"])
+        w = csv.DictWriter(f, fieldnames=["dataset_id", "item_id", "mode", "correct", "invalid_format", "latency_ms", "confidence"])
         w.writeheader()
         w.writerows(rows)
 
-    # Summary CSV: mode, accuracy, invalid_rate, mean_latency_ms
+    # Summary CSV: mode, accuracy, invalid_rate, mean_latency_ms, ece, brier (when confidence present)
     summary = []
     for mode in sorted(by_mode.keys()):
         c = by_mode[mode]["correct"]
         inv = by_mode[mode]["invalid"]
         lat = by_mode[mode]["latency"]
+        conf_list = by_mode[mode]["confidence"]
+        correct_list = by_mode[mode]["correct_list"]
         n = len(c) or 1
-        summary.append({
+        row = {
             "mode": mode,
             "accuracy": sum(c) / n,
             "invalid_rate": sum(inv) / n,
             "mean_latency_ms": sum(lat) / n,
             "n": n,
-        })
+        }
+        if conf_list and len(conf_list) == len(correct_list):
+            # Brier: mean (confidence - correct)^2
+            brier = sum((p - y) ** 2 for p, y in zip(conf_list, correct_list)) / len(conf_list)
+            row["brier"] = round(brier, 4)
+            # ECE (equal-mass bins): 10 bins by confidence quantiles
+            n_bins = min(10, len(conf_list))
+            sorted_idx = sorted(range(len(conf_list)), key=lambda i: conf_list[i])
+            bin_size = len(sorted_idx) // n_bins
+            ece = 0.0
+            for b in range(n_bins):
+                start = b * bin_size
+                end = len(sorted_idx) if b == n_bins - 1 else (b + 1) * bin_size
+                idx_bin = sorted_idx[start:end]
+                if not idx_bin:
+                    continue
+                acc_bin = sum(correct_list[i] for i in idx_bin) / len(idx_bin)
+                conf_bin = sum(conf_list[i] for i in idx_bin) / len(idx_bin)
+                ece += len(idx_bin) * abs(acc_bin - conf_bin)
+            ece /= len(conf_list)
+            row["ece"] = round(ece, 4)
+        else:
+            row["ece"] = ""
+            row["brier"] = ""
+        summary.append(row)
     summary_path = results_dir / "summary_by_mode.csv"
+    fieldnames = ["mode", "accuracy", "invalid_rate", "mean_latency_ms", "n", "ece", "brier"]
     with open(summary_path, "w", encoding="utf-8", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=["mode", "accuracy", "invalid_rate", "mean_latency_ms", "n"])
+        w = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
         w.writeheader()
         w.writerows(summary)
 

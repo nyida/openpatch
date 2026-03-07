@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import 'katex/dist/katex.min.css';
 import './globals.css';
 import { Nav } from '@/components/Nav';
+import { Footer } from '@/components/Footer';
 
 export const metadata: Metadata = {
   title: 'OpenPatch',
@@ -21,6 +22,7 @@ export default function RootLayout({
         <main className="flex-1 container mx-auto px-4 py-8 max-w-6xl">
           {children}
         </main>
+        <Footer />
       </body>
     </html>
   );

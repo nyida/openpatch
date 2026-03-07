@@ -5,14 +5,13 @@ import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useRef, useState, useLayoutEffect } from 'react';
 import { motion } from 'framer-motion';
+import { NavAuth } from './NavAuth';
 
 const links = [
   { href: '/', label: 'Chat' },
   { href: '/chats', label: 'Chats' },
   { href: '/research', label: 'Research' },
-  { href: '/evaluation', label: 'Evaluation' },
   { href: '/runs', label: 'Runs' },
-  { href: '/evals', label: 'Evals' },
   { href: '/settings', label: 'Settings' },
 ];
 
@@ -42,14 +41,14 @@ export function Nav() {
               <Image src="/logo.png" alt="OpenPatch" width={32} height={32} className="object-contain" />
             </span>
             OpenPatch
-            <span className="text-[10px] font-medium uppercase tracking-wider text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-none">
+            <span className="text-[10px] font-medium uppercase tracking-wider text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-md">
               v1
             </span>
           </Link>
           <div ref={containerRef} className="flex gap-0.5 relative">
             {activeIndex >= 0 && pill.width > 0 && (
               <motion.span
-                className="absolute top-0 bottom-0 rounded-none bg-emerald-500/10"
+                className="absolute top-0 bottom-0 rounded-lg bg-emerald-500/10"
                 initial={false}
                 animate={{ left: pill.left, width: pill.width }}
                 transition={{ type: 'spring', stiffness: 400, damping: 30 }}
@@ -71,6 +70,7 @@ export function Nav() {
               );
             })}
           </div>
+          <NavAuth />
         </div>
       </div>
     </nav>

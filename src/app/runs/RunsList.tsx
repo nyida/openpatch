@@ -30,7 +30,7 @@ export function RunsList({ runs }: { runs: RunItem[] }) {
   if (runs.length === 0) {
     return (
       <motion.div
-        className="rounded-none border-2 border-dashed border-slate-200/90 bg-slate-50/50 py-24 text-center"
+        className="rounded-2xl border-2 border-dashed border-slate-200/90 bg-slate-50/50 py-24 text-center"
         initial={{ opacity: 0, scale: 0.98 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.4 }}
@@ -51,14 +51,14 @@ export function RunsList({ runs }: { runs: RunItem[] }) {
           <motion.div key={run.id} variants={item}>
             <Link
               href={`/runs/${run.id}`}
-              className="block rounded-none border border-slate-200/90 bg-white p-5 transition-all duration-200 hover:border-slate-300 hover:shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/30 focus-visible:ring-offset-2"
+              className="block rounded-xl border border-slate-200/90 bg-white p-5 transition-all duration-200 hover:border-slate-300 hover:shadow-sm hover:bg-slate-50/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/30 focus-visible:ring-offset-2"
             >
               <p className="text-slate-800 line-clamp-2 leading-snug text-[15px]">
                 {run.inputText.slice(0, 220)}
                 {run.inputText.length > 220 && '…'}
               </p>
               <div className="mt-3.5 flex flex-wrap items-center gap-2.5 text-xs text-slate-500">
-                <span className="px-2.5 py-1 rounded bg-slate-100/90 text-slate-600 font-medium">
+                <span className="px-2.5 py-1 rounded-lg bg-slate-100/90 text-slate-600 font-medium">
                   {run.taskType}
                 </span>
                 <span>{run.versionTag ?? '—'}</span>

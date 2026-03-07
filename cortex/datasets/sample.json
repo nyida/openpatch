@@ -1,0 +1,5 @@
+[
+  { "id": "1", "prompt": "What is 15 + 27?", "ground_truth": "42" },
+  { "id": "2", "prompt": "What is the capital of France?", "ground_truth": "Paris" },
+  { "id": "3", "prompt": "How many sides does a hexagon have?", "ground_truth": "6" }
+]
