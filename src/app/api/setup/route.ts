@@ -4,10 +4,13 @@ export const dynamic = 'force-dynamic';
 
 /** Returns config status without exposing secrets. Used by /setup page. */
 export async function GET() {
-  const db =
-    Boolean(process.env.DATABASE_URL?.trim()) ||
-    Boolean(process.env.POSTGRES_PRISMA_URL?.trim()) ||
-    Boolean(process.env.POSTGRES_URL?.trim());
+  const dbUrl =
+    process.env.DATABASE_URL?.trim() ||
+    process.env.POSTGRES_PRISMA_URL?.trim() ||
+    process.env.POSTGRES_URL?.trim();
+  const db = dbUrl
+    ? dbUrl.startsWith('postgresql://') || dbUrl.startsWith('postgres://')
+    : false;
   const supabase =
     Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()) &&
     Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim());

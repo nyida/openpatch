@@ -30,7 +30,7 @@ export function SetupChecklist() {
       done: status.database,
       link: 'https://vercel.com/integrations/neon',
       linkText: 'Add Neon (free)',
-      fallback: 'Or add Vercel Postgres. Set DATABASE_URL to your pooler URL.',
+      fallback: 'Or Vercel Postgres. Integration auto-adds the URL—no manual env vars.',
     },
     {
       key: 'supabase' as const,

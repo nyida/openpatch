@@ -1,5 +1,17 @@
 import { PrismaClient } from '@prisma/client';
 
+// Sync DATABASE_URL from Vercel Postgres / Neon integrations (schema only reads DATABASE_URL)
+const rawDb = process.env.DATABASE_URL?.trim();
+const valid = rawDb && (rawDb.startsWith('postgresql://') || rawDb.startsWith('postgres://'));
+if (!valid) {
+  const fallback =
+    process.env.POSTGRES_PRISMA_URL?.trim() ||
+    process.env.POSTGRES_URL?.trim();
+  if (fallback && (fallback.startsWith('postgresql://') || fallback.startsWith('postgres://'))) {
+    process.env.DATABASE_URL = fallback;
+  }
+}
+
 function getDatabaseUrl(): string {
   const raw =
     process.env.DATABASE_URL ??
