@@ -12,6 +12,7 @@ const links = [
   { href: '/chats', label: 'Chats' },
   { href: '/research', label: 'Research' },
   { href: '/runs', label: 'Runs' },
+  { href: '/setup', label: 'Setup' },
   { href: '/settings', label: 'Settings' },
 ];
 

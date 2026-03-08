@@ -1,47 +1,36 @@
-# Deploy to Vercel – Checklist
+# Deploy to Vercel (zero config)
 
-## 1. Set environment variables
+## One-click setup
 
-In **Vercel** → your project → **Settings** → **Environment Variables**, add:
+1. **Deploy** – Push to GitHub and connect the repo in Vercel.
 
-| Variable | Value | Required |
-|----------|-------|----------|
-| `DATABASE_URL` | `postgresql://user:password@host:6543/postgres` (pooler URL, no quotes) | Yes |
-| `NEXT_PUBLIC_SUPABASE_URL` | Your Supabase project URL | Yes |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key | Yes |
-| `ENCRYPTION_KEY` | 32+ character secret | Yes |
-| `OPENROUTER_API_KEY` | OpenRouter API key (or `OPENAI_API_KEY`) | Yes |
+2. **Add integrations** (Vercel → your project → **Integrations**):
+   - **Neon** or **Vercel Postgres** → auto-adds `DATABASE_URL`
+   - **Supabase** → auto-adds `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 
-**DATABASE_URL rules:**
-- Must start with `postgresql://` or `postgres://`
-- No spaces, no quotes around the value
-- Use **pooler** URL (port 6543 for Supabase, pooler host for Neon)
+3. **Add LLM key** – In **Settings → Environment Variables**, add:
+   - `OPENROUTER_API_KEY` (get one at [openrouter.ai/keys](https://openrouter.ai/keys))
 
-## 2. Configure Supabase redirect URLs
+4. **Create tables** – Run once: `npx prisma db push` (use the same `DATABASE_URL` as in Vercel).
 
-In **Supabase** → your project → **Authentication** → **URL Configuration**:
+5. **Supabase redirect** – In Supabase → **Authentication** → **URL Configuration**, add your site URL (e.g. `https://your-app.vercel.app`) to Redirect URLs.
 
-- **Site URL:** `https://openpatch.vercel.app` (or your custom domain)
-- **Redirect URLs:** Add `https://openpatch.vercel.app/**` and `https://*.vercel.app/**`
+6. **Redeploy** – Vercel will pick up the new env vars.
 
-Without this, sign-in will fail on the deployed app.
+---
 
-## 3. Create database tables (once)
+## Setup page
 
-```bash
-npx prisma db push
-```
+After deploy, visit **/setup** for a live checklist and one-click links to add each integration.
 
-Use the same `DATABASE_URL` you set in Vercel.
+---
 
-## 4. Deploy
+## Manual env vars (if not using integrations)
 
-Push to `main` – Vercel deploys automatically.
-
-## Troubleshooting
-
-**"DATABASE_URL is missing or invalid"**  
-→ Add or fix `DATABASE_URL` in Vercel Settings → Environment Variables, then redeploy.
-
-**"the URL must start with the protocol"**  
-→ Remove quotes/spaces from the value. Paste only the raw URL.
+| Variable | Required |
+|----------|----------|
+| `DATABASE_URL` | Yes – Postgres pooler URL |
+| `OPENROUTER_API_KEY` or `OPENAI_API_KEY` | Yes |
+| `NEXT_PUBLIC_SUPABASE_URL` | For auth |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | For auth |
+| `ENCRYPTION_KEY` | For API key storage (32+ chars) |

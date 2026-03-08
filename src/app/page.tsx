@@ -62,6 +62,7 @@ function HomePageContent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [signedIn, setSignedIn] = useState<boolean | null>(null);
+  const [setupReady, setSetupReady] = useState<boolean | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -70,6 +71,9 @@ function HomePageContent() {
 
   useEffect(() => {
     fetch('/api/auth/session').then((r) => r.json()).then((d) => setSignedIn(!!d?.user)).catch(() => setSignedIn(false));
+  }, []);
+  useEffect(() => {
+    fetch('/api/setup').then((r) => r.json()).then((d) => setSetupReady(d?.ready ?? false)).catch(() => setSetupReady(true));
   }, []);
 
   // Load conversation from URL
@@ -247,6 +251,17 @@ function HomePageContent() {
   return (
     <>
       <AnimatedBackground />
+      {setupReady === false && (
+        <div className="sticky top-0 z-10 mx-4 mt-2">
+          <Link
+            href="/setup"
+            className="block rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-800 shadow-sm hover:bg-amber-100/80 transition-colors"
+          >
+            <span className="font-medium">Setup incomplete</span>
+            <span className="text-amber-700 ml-1">— Add database & LLM key to get started</span>
+          </Link>
+        </div>
+      )}
       <div className="relative flex flex-col h-[calc(100vh-3.5rem)] max-w-4xl mx-auto -mb-8 min-h-0 px-4">
         {/* Hero (first turn only) */}
         {isFirstTurn && !loading && (
@@ -427,7 +442,16 @@ function HomePageContent() {
                 className="flex-shrink-0 py-2"
               >
                 <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
-                  {error}
+                  {error.includes('Visit /setup') ? (
+                    <>
+                      {error.replace(' Visit /setup to configure.', '')}{' '}
+                      <Link href="/setup" className="font-medium text-red-800 underline">
+                        Configure →
+                      </Link>
+                    </>
+                  ) : (
+                    error
+                  )}
                 </div>
               </motion.div>
             )}

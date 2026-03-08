@@ -1,12 +1,26 @@
 'use client';
 
-import { createClient } from '@/lib/supabase/client';
+import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
 import { useState } from 'react';
 
 type Mode = 'signin' | 'signup';
 
 export function AuthForm() {
   const [mode, setMode] = useState<Mode>('signin');
+  const supabaseReady = isSupabaseConfigured();
+
+  if (!supabaseReady) {
+    return (
+      <div className="rounded-none border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+        <p className="font-medium">Sign-in not configured</p>
+        <p className="mt-1 text-amber-700">
+          Add <code className="bg-amber-100 px-1">NEXT_PUBLIC_SUPABASE_URL</code> and{' '}
+          <code className="bg-amber-100 px-1">NEXT_PUBLIC_SUPABASE_ANON_KEY</code> in Vercel → Settings → Environment Variables.
+          Create a free project at supabase.com.
+        </p>
+      </div>
+    );
+  }
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');

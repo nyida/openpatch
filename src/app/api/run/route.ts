@@ -36,9 +36,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(result);
   } catch (e) {
     console.error('Run failed', e);
-    return NextResponse.json(
-      { error: e instanceof Error ? e.message : 'Run failed' },
-      { status: 500 }
-    );
+    const msg = e instanceof Error ? e.message : 'Run failed';
+    const isConfigError =
+      msg.includes('DATABASE_URL') ||
+      msg.includes('No LLM configured') ||
+      msg.includes('No embed model') ||
+      msg.includes('Supabase not configured');
+    const error = isConfigError ? `${msg} Visit /setup to configure.` : msg;
+    return NextResponse.json({ error }, { status: isConfigError ? 503 : 500 });
   }
 }
