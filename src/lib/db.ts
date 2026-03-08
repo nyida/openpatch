@@ -1,12 +1,13 @@
 import { PrismaClient } from '@prisma/client';
 
-// Sync DATABASE_URL from Vercel Postgres / Neon integrations (schema only reads DATABASE_URL)
+// Sync DATABASE_URL from Vercel Postgres / Supabase integrations (schema only reads DATABASE_URL)
 const rawDb = process.env.DATABASE_URL?.trim();
 const valid = rawDb && (rawDb.startsWith('postgresql://') || rawDb.startsWith('postgres://'));
 if (!valid) {
   const fallback =
     process.env.POSTGRES_PRISMA_URL?.trim() ||
-    process.env.POSTGRES_URL?.trim();
+    process.env.POSTGRES_URL?.trim() ||
+    process.env.PUBLIC_SUPABASE_URL_POSTGRES_PRISMA_URL?.trim();
   if (fallback && (fallback.startsWith('postgresql://') || fallback.startsWith('postgres://'))) {
     process.env.DATABASE_URL = fallback;
   }
@@ -16,7 +17,8 @@ function getDatabaseUrl(): string {
   const raw =
     process.env.DATABASE_URL ??
     process.env.POSTGRES_PRISMA_URL ??
-    process.env.POSTGRES_URL;
+    process.env.POSTGRES_URL ??
+    process.env.PUBLIC_SUPABASE_URL_POSTGRES_PRISMA_URL;
   const url = (raw ?? '').trim();
   if (!url || (!url.startsWith('postgresql://') && !url.startsWith('postgres://'))) {
     throw new Error(

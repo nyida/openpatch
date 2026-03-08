@@ -7,7 +7,8 @@ export async function GET() {
   const dbUrl =
     process.env.DATABASE_URL?.trim() ||
     process.env.POSTGRES_PRISMA_URL?.trim() ||
-    process.env.POSTGRES_URL?.trim();
+    process.env.POSTGRES_URL?.trim() ||
+    process.env.PUBLIC_SUPABASE_URL_POSTGRES_PRISMA_URL?.trim();
   const db = dbUrl
     ? dbUrl.startsWith('postgresql://') || dbUrl.startsWith('postgres://')
     : false;
