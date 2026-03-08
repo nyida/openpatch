@@ -12,7 +12,7 @@ import {
   type CitationVerificationResult,
 } from '@/lib/verifiers';
 import { logger } from '@/lib/logger';
-import { readAttachmentContent } from '@/lib/storage';
+import { readAttachmentContent, getStoragePathForId } from '@/lib/storage';
 import { tavilySearch } from '@/lib/tavily';
 import { searchWeb } from '@/lib/searxng';
 import { crossrefSearch } from '@/lib/crossref';
@@ -55,7 +55,7 @@ export async function executeRun(input: RunInput): Promise<RunPipelineResult> {
         runId,
         type: 'file',
         originalName: input.attachmentNames?.[attId] ?? attId,
-        storagePath: `${process.env.UPLOAD_DIR ?? 'uploads'}/${attId}`,
+        storagePath: getStoragePathForId(attId),
         url: null,
       })),
     });

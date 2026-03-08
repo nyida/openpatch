@@ -5,6 +5,7 @@ import { runEvalCase } from '@/lib/evals/runner';
 import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 300;
 
 const bodySchema = z.object({
   suiteId: z.string().optional(),

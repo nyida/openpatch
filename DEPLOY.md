@@ -17,7 +17,16 @@ In **Vercel** → your project → **Settings** → **Environment Variables**, a
 - No spaces, no quotes around the value
 - Use **pooler** URL (port 6543 for Supabase, pooler host for Neon)
 
-## 2. Create database tables (once)
+## 2. Configure Supabase redirect URLs
+
+In **Supabase** → your project → **Authentication** → **URL Configuration**:
+
+- **Site URL:** `https://openpatch.vercel.app` (or your custom domain)
+- **Redirect URLs:** Add `https://openpatch.vercel.app/**` and `https://*.vercel.app/**`
+
+Without this, sign-in will fail on the deployed app.
+
+## 3. Create database tables (once)
 
 ```bash
 npx prisma db push
@@ -25,7 +34,7 @@ npx prisma db push
 
 Use the same `DATABASE_URL` you set in Vercel.
 
-## 3. Deploy
+## 4. Deploy
 
 Push to `main` – Vercel deploys automatically.
 

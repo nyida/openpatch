@@ -7,6 +7,12 @@ const UPLOAD_DIR = process.env.VERCEL ? '/tmp' : (process.env.UPLOAD_DIR ?? './u
 
 export { allowedMimeType, maxBytes };
 
+/** Path for storing/reading an attachment by id. Use when creating Attachment records. */
+export function getStoragePathForId(id: string): string {
+  const base = UPLOAD_DIR.startsWith('/') ? UPLOAD_DIR : UPLOAD_DIR.replace(/^\.\//, '');
+  return `${base}/${id}`;
+}
+
 export function getUploadPath(id: string, filename?: string): string {
   const base = join(UPLOAD_DIR, id);
   return filename ? `${base}_${filename}` : base;

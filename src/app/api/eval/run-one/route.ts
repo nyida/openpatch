@@ -6,6 +6,7 @@ import { appendRun, runId, type PipelineMode } from '@/lib/run-log';
 import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 300;
 
 const bodySchema = z.object({
   dataset_id: z.string(),

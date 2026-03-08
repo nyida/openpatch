@@ -4,6 +4,7 @@ import { executeRun } from '@/lib/pipeline/run';
 import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 300; // 5 min for multi-candidate LLM pipeline
 
 const bodySchema = z.object({
   inputText: z.string().min(1).max(50000),
