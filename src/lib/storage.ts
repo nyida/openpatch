@@ -1,19 +1,11 @@
 import { readFile } from 'fs/promises';
 import { join } from 'path';
 import { prisma } from '@/lib/db';
+import { allowedMimeType, maxBytes } from './storage-config';
 
-const UPLOAD_DIR = process.env.UPLOAD_DIR ?? './uploads';
-const MAX_SIZE_MB = Number(process.env.MAX_UPLOAD_MB ?? 10);
-const MAX_BYTES = MAX_SIZE_MB * 1024 * 1024;
+const UPLOAD_DIR = process.env.VERCEL ? '/tmp' : (process.env.UPLOAD_DIR ?? './uploads');
 
-const ALLOWED_TYPES = [
-  'text/plain',
-  'application/pdf',
-  'text/markdown',
-  'application/json',
-  'text/csv',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-];
+export { allowedMimeType, maxBytes };
 
 export function getUploadPath(id: string, filename?: string): string {
   const base = join(UPLOAD_DIR, id);
@@ -58,12 +50,4 @@ export async function readAttachmentContent(attachmentIdOrPath: string): Promise
   } catch {
     return null;
   }
-}
-
-export function allowedMimeType(mime: string): boolean {
-  return ALLOWED_TYPES.includes(mime) || mime.startsWith('text/');
-}
-
-export function maxBytes(): number {
-  return MAX_BYTES;
 }

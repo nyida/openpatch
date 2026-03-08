@@ -51,7 +51,22 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-**Note:** The Next.js build needs `DATABASE_URL` set (e.g. in `.env`) so Prisma can initialize. Use a real Postgres URL for dev; a placeholder is enough for `npm run build` only.
+## Deploy to Vercel
+
+1. **Connect repo** to Vercel and add env vars:
+   - `DATABASE_URL` – **Supabase pooler URL** (port 6543), not direct (port 5432). Example: `postgresql://postgres.[ref]:[password]@aws-0-us-east-1.pooler.supabase.com:6543/postgres`
+   - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `ENCRYPTION_KEY` (32+ chars)
+   - `OPENROUTER_API_KEY` (or `OPENAI_API_KEY`) for LLM calls
+
+2. **Create tables** (run once, with pooler `DATABASE_URL`):
+   ```bash
+   npx prisma db push
+   ```
+
+3. **Deploy** – Vercel runs `prisma generate && next build` automatically. No extra config needed.
+
+**Note:** File uploads on Vercel use `/tmp` (ephemeral). For persistent storage, use Supabase Storage or S3.
 
 ### LLM: 5 models, full answers, fast
 
