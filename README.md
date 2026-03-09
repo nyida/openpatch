@@ -53,18 +53,13 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## Deploy to Vercel
 
-1. **Connect repo** to Vercel and add env vars:
-   - `DATABASE_URL` – **Supabase pooler URL** (port 6543), not direct (port 5432). Example: `postgresql://postgres.[ref]:[password]@aws-0-us-east-1.pooler.supabase.com:6543/postgres`
-   - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - `ENCRYPTION_KEY` (32+ chars)
-   - `OPENROUTER_API_KEY` (or `OPENAI_API_KEY`) for LLM calls
+See **[DEPLOY.md](DEPLOY.md)** for a 5-step guide. Summary:
 
-2. **Create tables** (run once, with pooler `DATABASE_URL`):
-   ```bash
-   npx prisma db push
-   ```
-
-3. **Deploy** – Vercel runs `prisma generate && next build` automatically. No extra config needed.
+1. Connect repo to Vercel
+2. Add **Supabase** integration (database + auth)
+3. Add `OPENROUTER_API_KEY` and `ENCRYPTION_KEY` in env vars
+4. Run `npm run db:push:prod` to create tables
+5. Add redirect URL in Supabase → Auth, then redeploy
 
 **Note:** File uploads on Vercel use `/tmp` (ephemeral). For persistent storage, use Supabase Storage or S3.
 

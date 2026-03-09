@@ -28,9 +28,9 @@ export function SetupChecklist() {
       key: 'database' as const,
       label: 'Database (Postgres)',
       done: status.database,
-      link: 'https://vercel.com/integrations/neon',
-      linkText: 'Add Neon (free)',
-      fallback: 'Or Vercel Postgres. Integration auto-adds the URL—no manual env vars.',
+      link: 'https://vercel.com/integrations/supabase',
+      linkText: 'Add Supabase (free)',
+      fallback: 'Supabase gives database + auth. Or Neon or Vercel Postgres.',
     },
     {
       key: 'supabase' as const,
@@ -38,7 +38,7 @@ export function SetupChecklist() {
       done: status.supabase,
       link: 'https://vercel.com/integrations/supabase',
       linkText: 'Add Supabase (free)',
-      fallback: 'Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY. Then add your site URL to Supabase → Auth → URL Configuration.',
+      fallback: 'Add redirect URL in Supabase → Auth → URL Configuration: your-site.vercel.app/**',
     },
     {
       key: 'llm' as const,
@@ -91,7 +91,7 @@ export function SetupChecklist() {
         <div className="card p-4 border-emerald-200 bg-emerald-50 text-center">
           <p className="font-medium text-emerald-800">Ready to go</p>
           <p className="text-sm text-emerald-700 mt-1">
-            Run <code className="bg-emerald-100 px-1">npx prisma db push</code> once if you haven&apos;t, then redeploy.
+            Run <code className="bg-emerald-100 px-1">npm run db:push:prod</code> once to create tables (requires <code className="bg-emerald-100 px-1">vercel link</code>). Then redeploy.
           </p>
           <Link href="/" className="btn-primary mt-3 inline-block">
             Open Chat
