@@ -3,11 +3,16 @@ import * as openrouter from './openrouter';
 import * as ollama from './ollama';
 import { logger } from '@/lib/logger';
 
-/** True when Ollama is configured (local or remote). */
+/** True when Ollama is configured (local or remote). USE_OLLAMA forces Ollama. In dev, prefer Ollama by default. */
 export function isOllamaConfigured(): boolean {
+  if (process.env.USE_OLLAMA === 'true' || process.env.USE_OLLAMA === '1') return true;
+  if (process.env.USE_OLLAMA === 'false' || process.env.USE_OLLAMA === '0') return false;
   if (process.env.OLLAMA_BASE_URL?.trim()) return true;
   const urls = process.env.OLLAMA_URLS?.trim();
-  return Boolean(urls && urls.split(',').some((u) => u.trim().length > 0));
+  if (urls && urls.split(',').some((u) => u.trim().length > 0)) return true;
+  // In development, prefer Ollama (localhost) to avoid OpenRouter connection issues
+  if (process.env.NODE_ENV === 'development') return true;
+  return false;
 }
 
 // Parse OLLAMA_URLS for parallel multi-instance: "http://localhost:11434/v1,http://localhost:11435/v1,..."
@@ -65,14 +70,14 @@ export const defaultLLM: LLMAdapter = {
     if (cloud === 'openrouter') {
       return openrouter.complete(messages, {
         model: OPENROUTER_MODEL,
-        maxTokens: options?.maxTokens ?? 768,
+        maxTokens: options?.maxTokens ?? 576,
         temperature: options?.temperature ?? 0.3,
       });
     }
     if (cloud === 'openai') {
       return openai.complete(messages, {
         model: OPENAI_MODEL,
-        maxTokens: options?.maxTokens ?? 768,
+        maxTokens: options?.maxTokens ?? 576,
         temperature: options?.temperature ?? 0.3,
       });
     }
@@ -112,7 +117,7 @@ export async function completeWithModel(
     logger.info('LLM complete (OpenRouter)', { model: OPENROUTER_MODEL, messageCount: messages.length });
     return openrouter.complete(messages, {
       model: OPENROUTER_MODEL,
-      maxTokens: opts?.maxTokens ?? 768,
+      maxTokens: opts?.maxTokens ?? 576,
       temperature: opts?.temperature ?? 0.3,
     });
   }
@@ -120,7 +125,7 @@ export async function completeWithModel(
     logger.info('LLM complete (OpenAI)', { model: OPENAI_MODEL, messageCount: messages.length });
     return openai.complete(messages, {
       model: OPENAI_MODEL,
-      maxTokens: opts?.maxTokens ?? 768,
+      maxTokens: opts?.maxTokens ?? 576,
       temperature: opts?.temperature ?? 0.3,
     });
   }

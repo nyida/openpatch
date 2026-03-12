@@ -76,7 +76,7 @@ export function SetupChecklist() {
                   href={item.link}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-teal-600 hover:text-teal-700 font-medium"
+                  className="text-[var(--accent-muted)] hover:text-[var(--accent)] font-medium"
                 >
                   {item.linkText}
                 </a>

@@ -19,7 +19,8 @@ export async function GET() {
     Boolean(process.env.OPENROUTER_API_KEY?.trim()) ||
     Boolean(process.env.OPENAI_API_KEY?.trim()) ||
     Boolean(process.env.OLLAMA_BASE_URL?.trim()) ||
-    Boolean(process.env.OLLAMA_URLS?.trim());
+    Boolean(process.env.OLLAMA_URLS?.trim()) ||
+    (process.env.USE_OLLAMA === 'true' || process.env.USE_OLLAMA === '1');
 
   return NextResponse.json({
     database: db,

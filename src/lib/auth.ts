@@ -8,7 +8,7 @@ export async function getSession(): Promise<SessionUser> {
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
-  if (!user?.email) return null;
+    if (!user?.email) return null;
 
     const normalized = user.email.trim().toLowerCase();
     let dbUser = await prisma.user.findUnique({ where: { email: normalized } });

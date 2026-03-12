@@ -12,7 +12,7 @@ export function AuthForm() {
   if (!supabaseReady) {
     return (
       <div className="rounded-none border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-        <p className="font-medium">Sign-in not configured</p>
+        <p className="font-medium">Log-in not configured</p>
         <p className="mt-1 text-amber-700">
           Add <code className="bg-amber-100 px-1">NEXT_PUBLIC_SUPABASE_URL</code> and{' '}
           <code className="bg-amber-100 px-1">NEXT_PUBLIC_SUPABASE_ANON_KEY</code> in Vercel → Settings → Environment Variables.
@@ -49,7 +49,7 @@ export function AuthForm() {
           setError(err.message);
           return;
         }
-        setSuccess('Account created! Check your email to confirm, or sign in below.');
+        setSuccess('Account created! Check your email to confirm, or log in below.');
         setMode('signin');
         setPassword('');
         setConfirmPassword('');
@@ -123,7 +123,7 @@ export function AuthForm() {
             mode === 'signin' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-800'
           }`}
         >
-          Sign in
+          Log in
         </button>
         <button
           type="button"
@@ -151,7 +151,7 @@ export function AuthForm() {
           placeholder="you@example.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full rounded-none border border-slate-300 px-4 py-3 focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+          className="w-full rounded-none border border-slate-300 px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           required
         />
         <input
@@ -159,7 +159,7 @@ export function AuthForm() {
           placeholder="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full rounded-none border border-slate-300 px-4 py-3 focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+          className="w-full rounded-none border border-slate-300 px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           required
           minLength={mode === 'signup' ? 6 : undefined}
         />
@@ -169,13 +169,13 @@ export function AuthForm() {
             placeholder="Confirm password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
-            className="w-full rounded-none border border-slate-300 px-4 py-3 focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+            className="w-full rounded-none border border-slate-300 px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             required
             minLength={6}
           />
         )}
         <button type="submit" disabled={loading} className="btn-primary w-full">
-          {loading ? '…' : mode === 'signin' ? 'Sign in' : 'Create account'}
+          {loading ? '…' : mode === 'signin' ? 'Log in' : 'Create account'}
         </button>
       </form>
     </div>

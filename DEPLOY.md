@@ -1,4 +1,14 @@
-# Deploy to Vercel (5 steps)
+# Deploy to Vercel + Supabase
+
+## Pre-deploy checklist
+
+- [ ] `public/logo.png` and `public/paper.pdf` exist (or update links in code)
+- [ ] Supabase project created at [supabase.com](https://supabase.com)
+- [ ] OpenRouter API key from [openrouter.ai/keys](https://openrouter.ai/keys)
+
+**Note:** The run API can take up to 5 minutes for multi-candidate mode. Vercel Hobby plan limits functions to 10s; use Pro for full pipeline.
+
+---
 
 ## 1. Connect & deploy
 
@@ -10,23 +20,25 @@ Push your repo to GitHub. In Vercel, import the project and deploy.
 
 Vercel → your project → **Integrations** → search **Supabase** → Add.
 
-- Connect to **openpatch**
+- Connect to your Supabase project
 - **Custom Prefix:** leave empty
 - **Environments:** Production (and Preview if you want)
 - Install
 
-This adds database + auth env vars automatically.
+This adds `DATABASE_URL`, `POSTGRES_PRISMA_URL`, and Supabase auth vars automatically.
 
 ---
 
-## 3. Add 2 env vars manually
+## 3. Add env vars manually
 
 Vercel → **Settings** → **Environment Variables**:
 
-| Name | Value |
-|------|-------|
-| `OPENROUTER_API_KEY` | Your key from [openrouter.ai/keys](https://openrouter.ai/keys) |
-| `ENCRYPTION_KEY` | Any 32+ character secret (e.g. `openpatch-secret-key-32-chars-min`) |
+| Name | Value | Required |
+|------|-------|----------|
+| `OPENROUTER_API_KEY` | Your key from [openrouter.ai/keys](https://openrouter.ai/keys) | Yes |
+| `ENCRYPTION_KEY` | Any 32+ character secret (e.g. `openpatch-secret-key-32-chars-min`) | Yes |
+| `TAVILY_API_KEY` | [Tavily](https://tavily.com) key for web search + images | No |
+| `VERSION_TAG` | e.g. `v1.0.0` | No |
 
 ---
 
@@ -34,9 +46,10 @@ Vercel → **Settings** → **Environment Variables**:
 
 **Option A – Using Vercel CLI (easiest):**
 ```bash
+vercel link    # link to your Vercel project
 npm run db:push:prod
 ```
-Requires `vercel link` in the project. Pulls prod env vars and pushes schema.
+Pulls prod env vars and pushes schema.
 
 **Option B – Manual:** Get your pooler URL from Supabase (Connect → Transaction pooler), then:
 ```bash
@@ -48,7 +61,7 @@ DATABASE_URL="postgresql://postgres.[ref]:[password]@aws-0-us-east-1.pooler.supa
 ## 5. Supabase redirect URL
 
 Supabase → **Authentication** → **URL Configuration** → **Redirect URLs**:
-Add `https://your-app.vercel.app/**` (your actual Vercel domain).
+Add `https://your-app.vercel.app/**` (replace with your actual Vercel domain).
 
 ---
 

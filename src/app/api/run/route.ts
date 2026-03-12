@@ -13,6 +13,7 @@ const bodySchema = z.object({
   attachments: z.array(z.object({ id: z.string(), name: z.string() })).optional(),
   conversationHistory: z.array(z.object({ role: z.string(), content: z.string() })).optional(),
   improvedMode: z.boolean().optional(),
+  fast: z.boolean().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -32,6 +33,7 @@ export async function POST(req: NextRequest) {
       attachmentNames,
       userId: session?.id,
       improvedMode: parsed.data.improvedMode,
+      fast: parsed.data.fast,
     });
     return NextResponse.json(result);
   } catch (e) {
@@ -41,7 +43,10 @@ export async function POST(req: NextRequest) {
       msg.includes('DATABASE_URL') ||
       msg.includes('No LLM configured') ||
       msg.includes('No embed model') ||
-      msg.includes('Supabase not configured');
+      msg.includes('Supabase not configured') ||
+      msg.includes('Ollama is not running') ||
+      msg.includes('connection failed') ||
+      msg.includes('API key invalid');
     const error = isConfigError ? `${msg} Visit /setup to configure.` : msg;
     return NextResponse.json({ error }, { status: isConfigError ? 503 : 500 });
   }

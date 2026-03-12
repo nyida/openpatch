@@ -449,11 +449,11 @@ export default function ResearchPage() {
           </p>
           <p>
             For implementation details and trace inspection, see{' '}
-            <Link href="/runs" className="text-teal-600 hover:text-teal-700 font-medium">
+            <Link href="/runs" className="text-[var(--accent-muted)] hover:text-[var(--accent)] font-medium">
               Runs
             </Link>
             , the in-app{' '}
-            <Link href="/evals" className="text-teal-600 hover:text-teal-700 font-medium">
+            <Link href="/evals" className="text-[var(--accent-muted)] hover:text-[var(--accent)] font-medium">
               Eval suite
             </Link>
             , and the <code className="text-slate-600 bg-slate-100 px-1">evals/</code> and CORTEX harnesses in the repository. For publication-scale evaluation (GSM8K, n ≈ 1319), see <code className="text-slate-600 bg-slate-100 px-1">docs/TMLR_SUBMISSION_READINESS.md</code>.

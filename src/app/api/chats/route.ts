@@ -30,10 +30,16 @@ export async function GET() {
     return NextResponse.json(conversations);
   } catch (e: unknown) {
     console.error('List chats failed', e);
-    const code = (e as { code?: string })?.code;
-    if (code === 'P2021') {
+    const err = e as { code?: string; message?: string };
+    if (err.code === 'P2021') {
       return NextResponse.json(
         { error: 'Conversation table missing. Run: npx prisma db push' },
+        { status: 503 }
+      );
+    }
+    if (err.code === 'P1001' || err.code === 'P1017') {
+      return NextResponse.json(
+        { error: 'Database connection failed. Check DATABASE_URL and that the database is running.' },
         { status: 503 }
       );
     }
@@ -62,7 +68,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Not authorized to update this conversation' }, { status: 403 });
       }
       if (!session && existing.userId) {
-        return NextResponse.json({ error: 'Sign in to update this conversation' }, { status: 401 });
+        return NextResponse.json({ error: 'Log in to update this conversation' }, { status: 401 });
       }
       const updated = await prisma.conversation.update({
         where: { id: conversationId },
@@ -85,10 +91,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(created);
   } catch (e: unknown) {
     console.error('Save chat failed', e);
-    const code = (e as { code?: string })?.code;
-    if (code === 'P2021') {
+    const err = e as { code?: string };
+    if (err.code === 'P2021') {
       return NextResponse.json(
         { error: 'Conversation table missing. Run: npx prisma db push' },
+        { status: 503 }
+      );
+    }
+    if (err.code === 'P1001' || err.code === 'P1017') {
+      return NextResponse.json(
+        { error: 'Database connection failed. Check DATABASE_URL and that the database is running.' },
         { status: 503 }
       );
     }

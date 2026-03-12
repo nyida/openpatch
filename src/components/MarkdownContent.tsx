@@ -69,7 +69,7 @@ const markdownComponents = {
           href={src}
           target="_blank"
           rel="noopener noreferrer"
-          className="block rounded-lg overflow-hidden border border-slate-200 hover:border-teal-400 hover:shadow-lg transition-all duration-200 group"
+          className="block rounded-lg overflow-hidden border border-slate-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 group"
         >
           <img
             src={src}

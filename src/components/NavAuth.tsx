@@ -30,7 +30,7 @@ export function NavAuth() {
     return (
       <Link
         href="/auth"
-        className="ml-4 inline-flex items-center gap-2 rounded-none border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 hover:border-slate-400 transition-colors"
+        className="ml-4 btn-primary inline-flex items-center justify-center min-w-[88px]"
       >
         Sign in
       </Link>
@@ -39,10 +39,10 @@ export function NavAuth() {
 
   return (
     <div className="ml-4 flex items-center gap-2">
-      <span className="inline-flex items-center gap-1.5 rounded-none bg-emerald-50 border border-emerald-200 px-3 py-1.5 text-sm">
-        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden />
-        <span className="font-medium text-emerald-800">Logged in</span>
-        <span className="text-emerald-700 max-w-[120px] truncate" title={user.email}>
+      <span className="inline-flex items-center gap-1.5 rounded-md bg-[var(--bg-subtle)] border border-[var(--border)] px-3 py-1.5 text-sm">
+        <span className="h-1.5 w-1.5 rounded-full bg-[var(--success)]" aria-hidden />
+        <span className="font-medium text-[var(--text-secondary)]">Signed in</span>
+        <span className="text-[var(--text-muted)] max-w-[120px] truncate" title={user.email}>
           {user.email}
         </span>
       </span>
@@ -51,7 +51,7 @@ export function NavAuth() {
         onClick={handleLogout}
         className="px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-none transition-colors"
       >
-        Log out
+        Sign out
       </button>
     </div>
   );

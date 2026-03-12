@@ -15,11 +15,15 @@ export async function POST(req: NextRequest) {
     if (!prompt) {
       return NextResponse.json({ error: 'prompt required' }, { status: 400 });
     }
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 120_000);
     const res = await fetch(`${CORTEX_API_URL.replace(/\/$/, '')}/query`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ prompt }),
+      signal: controller.signal,
     });
+    clearTimeout(timeoutId);
     if (!res.ok) {
       const text = await res.text();
       return NextResponse.json(
@@ -31,9 +35,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(data);
   } catch (e) {
     console.error('CORTEX proxy error', e);
-    return NextResponse.json(
-      { error: e instanceof Error ? e.message : 'CORTEX proxy failed' },
-      { status: 500 }
-    );
+    const msg = e instanceof Error ? e.message : 'CORTEX proxy failed';
+    const isConnection =
+      msg.includes('ECONNREFUSED') ||
+      msg.includes('ECONNRESET') ||
+      msg.includes('ENOTFOUND') ||
+      msg.includes('fetch failed') ||
+      msg.includes('Failed to fetch') ||
+      msg.includes('abort');
+    const error = isConnection
+      ? 'CORTEX backend unreachable. Ensure it is running at ' + CORTEX_API_URL
+      : msg;
+    return NextResponse.json({ error }, { status: isConnection ? 503 : 500 });
   }
 }

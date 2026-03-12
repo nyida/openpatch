@@ -27,14 +27,14 @@ export default async function RunsPage() {
       <div className="mb-10">
         <div className="flex items-center gap-3">
           <h1 className="page-title">Runs</h1>
-          <span className="badge text-slate-500 bg-slate-100/90">v1</span>
+          <span className="badge text-[var(--text-muted)] bg-[var(--bg-subtle)]">v1</span>
         </div>
         <p className="page-subtitle">Inspect traces and reliability for each run.</p>
       </div>
       {!session && (
-        <div className="card max-w-md border-amber-200/80 bg-amber-50/30 rounded-xl mb-6">
-          <p className="text-slate-700 text-sm">Sign in to view your run traces.</p>
-          <Link href="/auth" className="text-teal-600 hover:text-teal-700 text-sm font-medium mt-2 inline-block">Sign in</Link>
+        <div className="card max-w-md border-[var(--border)] mb-6">
+          <p className="text-slate-700 text-sm">Log in to view your run traces.</p>
+          <Link href="/auth" className="btn-primary mt-3 inline-block">Log in</Link>
         </div>
       )}
       <RunsList runs={runs} />

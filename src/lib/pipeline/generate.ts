@@ -2,8 +2,9 @@ import type { TaskType } from './types';
 import { completeWithModel, getOllamaUrls } from '@/lib/llm';
 import { createHash } from 'crypto';
 
-const SYSTEM_PROMPT_FULL = `You are a helpful assistant. Give thorough, complete answers: cover the key points clearly and structure your response (e.g. short intro, main content, summary if needed). Be accurate and cite sources when you use them. For math, show your work. If uncertain, say so.`;
-const SYSTEM_PROMPT_FAST = `You are a helpful assistant. Answer clearly and concisely. Be accurate. For math, show your work.`;
+const IMAGE_INSTRUCTION = ` When the context includes image URLs, include 1–3 relevant images using markdown ![description](url) when they would help illustrate your answer.`;
+const SYSTEM_PROMPT_FULL = `You are a helpful assistant. Give thorough, complete answers: cover the key points clearly and structure your response (e.g. short intro, main content, summary if needed). Be accurate and cite sources when you use them. For math, show your work. If uncertain, say so.` + IMAGE_INSTRUCTION;
+const SYSTEM_PROMPT_FAST = `You are a helpful assistant. Answer clearly and concisely. Be accurate. For math, show your work.` + IMAGE_INSTRUCTION;
 
 function buildPrompt(
   taskType: TaskType,
@@ -24,14 +25,14 @@ export interface GenConfig {
 }
 
 const DEFAULT_CONFIGS: GenConfig[] = [
-  { model: 'llama3.2', temperature: 0.3, maxTokens: 768 },
-  { model: 'qwen', temperature: 0.35, maxTokens: 768 },
-  { model: 'mistral', temperature: 0.3, maxTokens: 768 },
-  { model: 'phi', temperature: 0.25, maxTokens: 768 },
-  { model: 'gemma2', temperature: 0.3, maxTokens: 768 },
+  { model: 'llama3.2', temperature: 0.3, maxTokens: 512 },
+  { model: 'qwen', temperature: 0.35, maxTokens: 512 },
+  { model: 'mistral', temperature: 0.3, maxTokens: 512 },
+  { model: 'phi', temperature: 0.25, maxTokens: 512 },
+  { model: 'gemma2', temperature: 0.3, maxTokens: 512 },
 ];
 
-const FAST_MAX_TOKENS = 768;
+const FAST_MAX_TOKENS = 512;
 
 export async function generateCandidates(
   taskType: TaskType,

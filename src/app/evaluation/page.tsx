@@ -111,7 +111,7 @@ export default function EvaluationPage() {
   }, [dryRun, fetchResults]);
 
   return (
-    <PageMotion className="max-w-4xl mx-auto px-4 py-10">
+    <PageMotion className="max-w-4xl mx-auto px-4 py-10 pb-16">
       <div className="mb-10">
         <div className="flex items-center gap-3">
           <h1 className="page-title">Evaluation</h1>
@@ -123,48 +123,53 @@ export default function EvaluationPage() {
       </div>
 
       <div className="space-y-6">
-        <div className="flex flex-wrap gap-2 items-center">
-          <label className="inline-flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={dryRun}
-              onChange={(e) => setDryRun(e.target.checked)}
-              className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-            />
-            Dry run (no Ollama)
-          </label>
-          <button
-            type="button"
-            onClick={() => run('run')}
-            disabled={!!loading}
-            className="btn-secondary text-sm px-4 py-2"
-          >
-            {loading === 'run' ? 'Running…' : 'Run'}
-          </button>
-          <button
-            type="button"
-            onClick={() => run('score')}
-            disabled={!!loading}
-            className="btn-secondary text-sm px-4 py-2"
-          >
-            {loading === 'score' ? 'Scoring…' : 'Score'}
-          </button>
-          <button
-            type="button"
-            onClick={() => run('analyze')}
-            disabled={!!loading}
-            className="btn-secondary text-sm px-4 py-2"
-          >
-            {loading === 'analyze' ? 'Analyzing…' : 'Analyze'}
-          </button>
-          <button
-            type="button"
-            onClick={runAll}
-            disabled={!!loading}
-            className="btn-primary text-sm px-4 py-2"
-          >
-            {loading ? 'Running…' : 'Run all'}
-          </button>
+        <div className="card">
+          <h2 className="section-label">Pipeline</h2>
+          <div className="flex flex-wrap gap-3 items-center -mt-1">
+            <label className="inline-flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={dryRun}
+                onChange={(e) => setDryRun(e.target.checked)}
+                className="rounded border-slate-300 text-[var(--accent-muted)] focus:ring-blue-500"
+              />
+              Dry run (no Ollama)
+            </label>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => run('run')}
+                disabled={!!loading}
+                className="btn-secondary text-sm px-4 py-2"
+              >
+                {loading === 'run' ? 'Running…' : 'Run'}
+              </button>
+              <button
+                type="button"
+                onClick={() => run('score')}
+                disabled={!!loading}
+                className="btn-secondary text-sm px-4 py-2"
+              >
+                {loading === 'score' ? 'Scoring…' : 'Score'}
+              </button>
+              <button
+                type="button"
+                onClick={() => run('analyze')}
+                disabled={!!loading}
+                className="btn-secondary text-sm px-4 py-2"
+              >
+                {loading === 'analyze' ? 'Analyzing…' : 'Analyze'}
+              </button>
+              <button
+                type="button"
+                onClick={runAll}
+                disabled={!!loading}
+                className="btn-primary text-sm px-4 py-2"
+              >
+                {loading ? 'Running…' : 'Run all'}
+              </button>
+            </div>
+          </div>
         </div>
 
         {error && (
@@ -174,41 +179,44 @@ export default function EvaluationPage() {
         )}
 
         {log && (
-          <pre className="rounded-xl bg-slate-50 border border-slate-200 p-4 text-xs text-slate-700 overflow-x-auto whitespace-pre-wrap scroll-smooth">
-            {log}
-          </pre>
+          <div className="card">
+            <h2 className="section-label">Log</h2>
+            <pre className="rounded-none bg-slate-50/80 border border-slate-200 p-4 text-xs text-slate-700 overflow-x-auto whitespace-pre-wrap scroll-smooth -mt-1">
+              {log}
+            </pre>
+          </div>
         )}
 
         {results && (
-          <div className="space-y-6">
+          <div className="space-y-6 pb-8">
             {results.summaryTableCsv && (
-              <div>
-                <h2 className="text-sm font-semibold text-slate-800 mb-2">Summary table</h2>
-                <pre className="rounded-xl bg-white border border-slate-200 p-4 text-xs overflow-x-auto whitespace-pre">
+              <div className="card">
+                <h2 className="section-label">Summary table</h2>
+                <pre className="rounded-none bg-slate-50/80 border border-slate-200 p-4 text-xs overflow-x-auto whitespace-pre -mt-1">
                   {results.summaryTableCsv}
                 </pre>
               </div>
             )}
             {results.pairwiseCsv && (
-              <div>
-                <h2 className="text-sm font-semibold text-slate-800 mb-2">Pairwise comparison</h2>
-                <pre className="rounded-xl bg-white border border-slate-200 p-4 text-xs overflow-x-auto whitespace-pre max-h-60">
+              <div className="card">
+                <h2 className="section-label">Pairwise comparison</h2>
+                <pre className="rounded-none bg-slate-50/80 border border-slate-200 p-4 text-xs overflow-x-auto whitespace-pre max-h-60 -mt-1">
                   {results.pairwiseCsv}
                 </pre>
               </div>
             )}
             {results.bootstrap && typeof results.bootstrap === 'object' ? (
-              <div>
-                <h2 className="text-sm font-semibold text-slate-800 mb-2">Bootstrap (paired diff)</h2>
-                <pre className="rounded-xl bg-white border border-slate-200 p-4 text-xs overflow-x-auto whitespace-pre">
+              <div className="card">
+                <h2 className="section-label">Bootstrap (paired diff)</h2>
+                <pre className="rounded-none bg-slate-50/80 border border-slate-200 p-4 text-xs overflow-x-auto whitespace-pre -mt-1">
                   {JSON.stringify(results.bootstrap, null, 2)}
                 </pre>
               </div>
             ) : null}
             {results.figures?.length > 0 && (
-              <div>
-                <h2 className="text-sm font-semibold text-slate-800 mb-2">Figures</h2>
-                <div className="flex flex-wrap gap-4">
+              <div className="card">
+                <h2 className="section-label">Figures</h2>
+                <div className="flex flex-wrap gap-4 -mt-1">
                   {results.figures.map((name) => (
                     <figure key={name}>
                       <img

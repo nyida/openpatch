@@ -13,7 +13,7 @@ export default function SetupPage() {
       </p>
       <SetupChecklist />
       <p className="mt-8 text-center">
-        <Link href="/" className="text-sm text-teal-600 hover:text-teal-700">
+        <Link href="/" className="text-sm text-[var(--accent-muted)] hover:text-[var(--accent)]">
           ← Back to Chat
         </Link>
       </p>

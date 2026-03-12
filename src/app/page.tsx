@@ -1,13 +1,13 @@
 'use client';
 
 import { useState, useRef, useEffect, Suspense } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ReliabilityReport } from '@/components/ReliabilityReport';
 import { MarkdownContent } from '@/components/MarkdownContent';
-import { AnimatedBackground } from '@/components/AnimatedBackground';
+import { PipelineModeSelect } from '@/components/PipelineModeSelect';
 
 type CortexAlternative = { model: string; output: string; confidence?: number; latency_ms?: number };
 
@@ -19,6 +19,8 @@ type ChatMessage = {
   latencyMs?: number;
   /** Run trace for research export (when improvedMode was used). */
   runTrace?: Record<string, unknown>;
+  /** Images from web search or URLs, appended when LLM omits them */
+  images?: { url: string; title?: string }[];
   /** CORTEX: confidence-optimized routing response */
   cortex?: {
     confidence: number;
@@ -50,30 +52,37 @@ const bubble = {
 function HomePageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const pathname = usePathname();
   const chatIdFromUrl = searchParams.get('chat');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [input, setInput] = useState('');
-  const [urls, setUrls] = useState('');
+  const [urlList, setUrlList] = useState<string[]>([]);
+  const [urlInput, setUrlInput] = useState('');
   const [uploads, setUploads] = useState<{ id: string; name: string }[]>([]);
   const [improvedMode, setImprovedMode] = useState(false);
   const [cortexMode, setCortexMode] = useState(false);
+  const [fastMode, setFastMode] = useState(true); // Default on for fastest response
   const pipelineMode: 'standard' | 'improved' | 'cortex' = cortexMode ? 'cortex' : improvedMode ? 'improved' : 'standard';
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [signedIn, setSignedIn] = useState<boolean | null>(null);
-  const [setupReady, setSetupReady] = useState<boolean | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  useEffect(() => { scrollToBottom(); }, [messages, loading]);
+  useEffect(() => {
+    if (messages.length > 0 || loading) scrollToBottom();
+  }, [messages, loading]);
+
+  useEffect(() => {
+    if (pathname === '/') {
+      document.querySelector('main')?.scrollTo({ top: 0, behavior: 'auto' });
+    }
+  }, [pathname]);
 
   useEffect(() => {
     fetch('/api/auth/session').then((r) => r.json()).then((d) => setSignedIn(!!d?.user)).catch(() => setSignedIn(false));
-  }, []);
-  useEffect(() => {
-    fetch('/api/setup').then((r) => r.json()).then((d) => setSetupReady(d?.ready ?? false)).catch(() => setSetupReady(true));
   }, []);
 
   // Load conversation from URL
@@ -161,7 +170,7 @@ function HomePageContent() {
             router.replace(`/?chat=${chatData.id}`, { scroll: false });
           }
         } catch (_) {}
-        if (messages.length === 0) setUrls('');
+        if (messages.length === 0) setUrlList([]);
         setUploads([]);
         setLoading(false);
         return;
@@ -173,14 +182,16 @@ function HomePageContent() {
         attachments?: { id: string; name: string }[];
         conversationHistory?: { role: string; content: string }[];
         improvedMode?: boolean;
+        fast?: boolean;
       } = { inputText: toSend, improvedMode };
+      if (improvedMode && fastMode) body.fast = true;
 
       if (messages.length === 0) {
-        if (urls.trim()) body.urls = urls.split(/\s+/).map((u) => u.trim()).filter(Boolean);
+        if (urlList.length) body.urls = urlList;
         if (uploads.length) body.attachments = uploads;
       } else {
         body.conversationHistory = [...messages, { role: 'user', content: toSend }].map((m) => ({ role: m.role, content: m.content }));
-        if (urls.trim()) body.urls = urls.split(/\s+/).map((u) => u.trim()).filter(Boolean);
+        if (urlList.length) body.urls = urlList;
         if (uploads.length) body.attachments = uploads;
       }
 
@@ -196,13 +207,21 @@ function HomePageContent() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(typeof data?.error === 'string' ? data.error : data?.error?.message || 'Request failed');
 
+      let displayContent = data.finalAnswer ?? '';
+      const images = (data.images ?? []) as { url: string; title?: string }[];
+      const hasImageInContent = /!\[.*?\]\(.*?\)/.test(displayContent);
+      if (images.length > 0 && !hasImageInContent) {
+        const imageBlocks = images.slice(0, 3).map((img) => `![${img.title ?? 'Relevant image'}](${img.url})`).join('\n\n');
+        displayContent = displayContent.trimEnd() + '\n\n---\n\n*Relevant images from the web:*\n\n' + imageBlocks;
+      }
       const newAssistant: ChatMessage = {
         role: 'assistant',
-        content: data.finalAnswer,
+        content: displayContent,
         runId: data.runId,
         reliability: data.reliability as Record<string, unknown>,
         latencyMs: data.latencyMs,
         runTrace: data.runTrace as Record<string, unknown> | undefined,
+        images: images.length ? images : undefined,
       };
       setMessages((prev) => [...prev, newAssistant]);
 
@@ -230,7 +249,7 @@ function HomePageContent() {
         }
       } catch (_) {}
 
-      if (messages.length === 0) setUrls('');
+      if (messages.length === 0) setUrlList([]);
       setUploads([]);
     } catch (e) {
       const message =
@@ -250,59 +269,46 @@ function HomePageContent() {
 
   return (
     <>
-      <AnimatedBackground />
-      {setupReady === false && (
-        <div className="sticky top-0 z-10 mx-4 mt-2">
-          <Link
-            href="/setup"
-            className="block rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-800 shadow-sm hover:bg-amber-100/80 transition-colors"
-          >
-            <span className="font-medium">Setup incomplete</span>
-            <span className="text-amber-700 ml-1">— Add database & LLM key to get started</span>
-          </Link>
-        </div>
-      )}
-      <div className="relative flex flex-col h-[calc(100vh-3.5rem)] max-w-4xl mx-auto -mb-8 min-h-0 px-4">
+      <div className="relative flex flex-col min-h-0 max-w-4xl mx-auto px-4">
         {/* Hero (first turn only) */}
         {isFirstTurn && !loading && (
           <motion.section
-            className="flex-shrink-0 pt-8 pb-6"
+            className="flex-shrink-0 pt-4 pb-8"
             variants={container}
             initial="hidden"
             animate="show"
           >
             <div className="text-center">
               <motion.div variants={item} className="flex justify-center mb-4">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl overflow-hidden bg-white border border-slate-200/80 shadow-sm">
-                  <Image src="/logo.png" alt="" width={56} height={56} className="object-contain p-1.5" aria-hidden />
+                <div className="inline-flex items-center justify-center w-14 h-14 rounded-none overflow-hidden bg-[var(--bg-surface)] border border-[var(--border)]">
+                  <Image src="/logo.png" alt="" width={48} height={48} className="object-contain p-1.5" aria-hidden />
                 </div>
               </motion.div>
-              <motion.p variants={item} className="mt-3 text-slate-600 max-w-md mx-auto text-sm leading-relaxed">
-                Ask anything. Multiple models answer, we verify and pick the best. Attach docs or URLs for sourced answers.
+              <motion.p variants={item} className="mt-3 text-[var(--text-secondary)] max-w-lg mx-auto text-[14px] leading-relaxed font-sans">
+                Submit a query for verified, traceable responses. Attach documents or URLs for sourced answers.
               </motion.p>
               <motion.div variants={item} className="mt-5 flex flex-wrap justify-center gap-2">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/90 text-xs font-medium text-slate-600 shadow-sm border border-slate-200/60">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  Verified answers
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-none text-[11px] font-medium uppercase tracking-wider text-[var(--text-secondary)] bg-[var(--bg-surface)] border border-[var(--border)]">
+                  Verified
                 </span>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/90 text-xs font-medium text-slate-600 shadow-sm border border-slate-200/60">
-                  Full trace
+                <span className="inline-flex items-center px-2.5 py-1 rounded-none text-[11px] font-medium uppercase tracking-wider text-[var(--text-secondary)] bg-[var(--bg-surface)] border border-[var(--border)]">
+                  Full traceability
                 </span>
                 <Link
                   href="/paper.pdf"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100/80 border border-emerald-200/60 transition-colors"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-none text-[11px] font-medium uppercase tracking-wider text-[var(--accent)] bg-[var(--accent-soft)] hover:bg-[var(--accent-soft)]/80 border border-[var(--accent)]/20 transition-colors"
                 >
                   <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                  Paper (PDF)
+                  Technical Report (PDF)
                 </Link>
                 {signedIn === false && (
                   <Link
                     href="/auth"
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-amber-700 bg-amber-50 hover:bg-amber-100/80 border border-amber-200 transition-colors"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-none text-[11px] font-medium uppercase tracking-wider text-[var(--text-secondary)] bg-[var(--bg-surface)] hover:bg-[var(--bg-subtle)] border border-[var(--border)] transition-colors"
                   >
-                    Not signed in — Sign in to save chats
+                    Sign in to persist conversations
                   </Link>
                 )}
               </motion.div>
@@ -310,8 +316,8 @@ function HomePageContent() {
           </motion.section>
         )}
 
-        <section className="flex-1 flex flex-col min-h-0 min-w-0">
-          <div className="flex-1 overflow-y-auto py-4 min-h-0 chat-scroll pb-6 overscroll-contain">
+        <section className="flex flex-col min-w-0">
+          <div className="py-4 pb-6">
             <div className={`space-y-5 ${messages.length > 0 ? 'max-w-3xl mx-auto' : ''}`}>
               <AnimatePresence initial={false}>
                 {messages.map((m, i) => (
@@ -327,12 +333,11 @@ function HomePageContent() {
                   >
                     <motion.div
                       layout
-                      className={`max-w-[88%] rounded-2xl px-5 py-4 ${
+                      className={`max-w-[88%] rounded-none px-5 py-4 ${
                         m.role === 'user'
-                          ? 'bg-[var(--accent)] text-slate-900 shadow-sm border border-slate-200/60'
-                          : 'bg-white border border-slate-200/80 shadow-sm'
+                          ? 'bg-[var(--bg-subtle)] text-[var(--text-primary)] shadow-sm border border-[var(--border)]'
+                          : 'bg-[var(--bg-surface)] border border-[var(--border)] shadow-[var(--shadow-xs)]'
                       }`}
-                      whileHover={{ boxShadow: '0 4px 12px -2px rgba(0,0,0,0.08)' }}
                       transition={{ type: 'spring', stiffness: 400, damping: 25 }}
                     >
                       {m.role === 'assistant' ? (
@@ -340,18 +345,18 @@ function HomePageContent() {
                       ) : (
                         <div className="whitespace-pre-wrap text-[15px] leading-[1.6]">{m.content}</div>
                       )}
-                      {m.role === 'assistant' && (m.runId || m.reliability || m.latencyMs != null || m.cortex) && (
-                        <div className="mt-4 pt-4 border-t border-slate-100 space-y-3">
+                          {m.role === 'assistant' && (m.runId || m.reliability || m.latencyMs != null || m.cortex) && (
+                        <div className="mt-4 pt-4 border-t border-[var(--border-soft)] space-y-3">
                           {m.cortex && (
-                            <div className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-4 space-y-3">
+                            <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] p-4 space-y-3">
                               <div className="flex items-center gap-2.5 flex-wrap">
-                                <span className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold border bg-white border-slate-200 text-slate-700">
+                                <span className="inline-flex items-center px-2.5 py-1 rounded text-[11px] font-medium border bg-[var(--bg-surface)] border-[var(--border)] text-[var(--text-secondary)]">
                                   Confidence: {Math.round((m.cortex.confidence ?? 0) * 100)}%
                                 </span>
-                                <span className={`inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold border ${
-                                  m.cortex.reliability === 'High' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' :
-                                  m.cortex.reliability === 'Low' ? 'bg-amber-100 text-amber-800 border-amber-200' :
-                                  'bg-slate-100 text-slate-700 border-slate-200'
+                                <span className={`inline-flex items-center px-2.5 py-1 rounded-none text-[11px] font-medium border ${
+                                  m.cortex.reliability === 'High' ? 'bg-[var(--accent-soft)] text-[var(--accent)] border-[var(--accent)]/20' :
+                                  m.cortex.reliability === 'Low' ? 'bg-slate-100 text-slate-700 border-slate-200' :
+                                  'bg-[var(--bg-subtle)] text-[var(--text-secondary)] border-[var(--border)]'
                                 }`}>
                                   Reliability: {m.cortex.reliability}
                                 </span>
@@ -378,33 +383,38 @@ function HomePageContent() {
                           {m.reliability && typeof m.reliability === 'object' && (
                             <ReliabilityReport data={m.reliability as import('@/components/ReliabilityReport').ReliabilityData} />
                           )}
-                          <div className="flex items-center gap-3 text-xs text-slate-500 flex-wrap">
-                            {m.latencyMs != null && <span>{m.latencyMs}ms</span>}
-                            {m.runId && (
+                          <div className="rounded-none border border-[var(--border)] bg-[var(--bg-subtle)] px-4 py-3">
+                            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-2">Trace</p>
+                            <div className="flex items-center gap-4 flex-wrap">
+                              {m.latencyMs != null && (
+                                <span className="text-sm font-medium text-slate-700">{m.latencyMs}ms</span>
+                              )}
+                              {m.runId && (
                                 <Link
-                                href={`/runs/${m.runId}`}
-                                className="text-teal-600 hover:text-teal-700 font-medium inline-flex items-center gap-1 transition-colors"
-                              >
-                                View trace
-                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-                              </Link>
-                            )}
-                            {m.runTrace && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const blob = new Blob([JSON.stringify(m.runTrace, null, 2)], { type: 'application/json' });
-                                  const a = document.createElement('a');
-                                  a.href = URL.createObjectURL(blob);
-                                  a.download = `run-trace-${(m.runTrace as { run_id?: string }).run_id ?? 'export'}.json`;
-                                  a.click();
-                                  URL.revokeObjectURL(a.href);
-                                }}
-                                className="text-teal-600 hover:text-teal-700 font-medium inline-flex items-center gap-1 transition-colors"
-                              >
-                                Research export
-                              </button>
-                            )}
+                                  href={`/runs/${m.runId}`}
+                                  className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--accent)] hover:text-[var(--accent-hover)] transition-colors"
+                                >
+                                  View full trace
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                                </Link>
+                              )}
+                              {m.runTrace && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const blob = new Blob([JSON.stringify(m.runTrace, null, 2)], { type: 'application/json' });
+                                    const a = document.createElement('a');
+                                    a.href = URL.createObjectURL(blob);
+                                    a.download = `run-trace-${(m.runTrace as { run_id?: string }).run_id ?? 'export'}.json`;
+                                    a.click();
+                                    URL.revokeObjectURL(a.href);
+                                  }}
+                                  className="text-sm font-medium text-slate-600 hover:text-slate-800 transition-colors"
+                                >
+                                  Export JSON
+                                </button>
+                              )}
+                            </div>
                           </div>
                         </div>
                       )}
@@ -419,13 +429,13 @@ function HomePageContent() {
                   className="flex justify-start"
                 >
                   <motion.div
-                    className="rounded-2xl bg-white border border-slate-200/80 px-5 py-4 shadow-sm inline-flex gap-2.5"
+                    className="rounded-lg bg-[var(--bg-surface)] border border-[var(--border)] px-5 py-4 shadow-[var(--shadow-xs)] inline-flex gap-2.5"
                     animate={{ opacity: [0.9, 1] }}
                     transition={{ repeat: Infinity, duration: 1, repeatType: 'reverse' }}
                   >
-                    <motion.span className="w-2.5 h-2.5 rounded-full bg-teal-500" animate={{ y: [0, -4, 0] }} transition={{ repeat: Infinity, duration: 0.5 }} />
-                    <motion.span className="w-2.5 h-2.5 rounded-full bg-teal-500" animate={{ y: [0, -4, 0] }} transition={{ repeat: Infinity, duration: 0.5, delay: 0.1 }} />
-                    <motion.span className="w-2.5 h-2.5 rounded-full bg-teal-500" animate={{ y: [0, -4, 0] }} transition={{ repeat: Infinity, duration: 0.5, delay: 0.2 }} />
+                    <motion.span className="w-2.5 h-2.5 rounded-none bg-[var(--accent)]" animate={{ y: [0, -4, 0] }} transition={{ repeat: Infinity, duration: 0.5 }} />
+                    <motion.span className="w-2.5 h-2.5 rounded-none bg-[var(--accent)]" animate={{ y: [0, -4, 0] }} transition={{ repeat: Infinity, duration: 0.5, delay: 0.1 }} />
+                    <motion.span className="w-2.5 h-2.5 rounded-none bg-[var(--accent)]" animate={{ y: [0, -4, 0] }} transition={{ repeat: Infinity, duration: 0.5, delay: 0.2 }} />
                   </motion.div>
                 </motion.div>
               )}
@@ -457,14 +467,34 @@ function HomePageContent() {
             )}
           </AnimatePresence>
 
-          <footer className="flex-shrink-0 pt-2 pb-6">
+          <footer className="flex-shrink-0 pt-4 pb-6">
             {isFirstTurn ? (
-              <div className="space-y-4">
+              <div className="space-y-5">
+                <div className="flex flex-wrap items-center gap-3">
+                  <PipelineModeSelect
+                    value={pipelineMode}
+                    onChange={(m) => {
+                      setImprovedMode(m === 'improved');
+                      setCortexMode(m === 'cortex');
+                    }}
+                  />
+                  {improvedMode && (
+                    <label className="flex items-center gap-2 text-sm text-[var(--text-secondary)] cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={fastMode}
+                        onChange={(e) => setFastMode(e.target.checked)}
+                        className="rounded-none border-slate-300 text-[var(--accent)] focus:ring-[var(--accent)]"
+                      />
+                      Single-candidate
+                    </label>
+                  )}
+                </div>
                 <label className="block">
-                  <span className="sr-only">Your question</span>
+                  <span className="sr-only">Query</span>
                   <textarea
                     className="input-base resize-none min-h-[100px]"
-                    placeholder="Ask anything..."
+                    placeholder="Enter your question or request..."
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={(e) => {
@@ -473,16 +503,32 @@ function HomePageContent() {
                   />
                 </label>
                 <div className="flex flex-wrap gap-2.5 items-center">
-                  <label className="flex-1 min-w-[200px]">
-                    <span className="block text-xs font-medium text-slate-500 mb-1">Paste URLs here, one per line</span>
-                    <textarea
-                      className="input-base h-[40px] min-h-[40px] max-h-[40px] py-2 text-sm w-full resize-none overflow-y-auto"
-                      placeholder="https://..."
-                      value={urls}
-                      onChange={(e) => setUrls(e.target.value)}
-                      rows={1}
+                  <div className="flex flex-1 min-w-[200px] gap-2 items-center">
+                    <input
+                      type="url"
+                      className="input-base h-[40px] py-2.5 text-sm flex-1 min-w-0"
+                      placeholder="Add URL for context (optional)"
+                      value={urlInput}
+                      onChange={(e) => setUrlInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          const u = urlInput.trim();
+                          if (u) { setUrlList((prev) => [...prev, u]); setUrlInput(''); }
+                        }
+                      }}
                     />
-                  </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const u = urlInput.trim();
+                        if (u) { setUrlList((prev) => [...prev, u]); setUrlInput(''); }
+                      }}
+                      className="btn-secondary text-sm h-[40px] px-4 shrink-0"
+                    >
+                      Add
+                    </button>
+                  </div>
                   <input ref={fileInputRef} type="file" multiple accept=".txt,.pdf,.md,.json,.csv" className="hidden" onChange={handleUpload} />
                   <button
                     type="button"
@@ -492,149 +538,141 @@ function HomePageContent() {
                     <svg className="w-4 h-4 shrink-0 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
-                    Attach files
+                    Attach
                   </button>
                   {uploads.length > 0 && (
                     <span className="text-xs text-slate-500 font-medium self-center">{uploads.length} file(s)</span>
                   )}
-                  <div
-                    role="group"
-                    aria-label="Pipeline mode"
-                    className="inline-flex h-[40px] shrink-0 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] overflow-hidden"
-                  >
-                    <button
-                      type="button"
-                      onClick={() => { setImprovedMode(false); setCortexMode(false); }}
-                      className={`h-full px-3 text-sm font-medium transition-colors ${
-                        pipelineMode === 'standard'
-                          ? 'bg-[var(--accent)] text-slate-800'
-                          : 'text-slate-600 hover:bg-[var(--bg-subtle)] hover:text-slate-800'
-                      }`}
-                    >
-                      Standard
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { setImprovedMode(true); setCortexMode(false); }}
-                      className={`h-full px-3 text-sm font-medium transition-colors ${
-                        pipelineMode === 'improved'
-                          ? 'bg-[var(--accent)] text-slate-800'
-                          : 'text-slate-600 hover:bg-[var(--bg-subtle)] hover:text-slate-800'
-                      }`}
-                    >
-                      Improved
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { setImprovedMode(false); setCortexMode(true); }}
-                      className={`h-full px-3 text-sm font-medium transition-colors ${
-                        pipelineMode === 'cortex'
-                          ? 'bg-[var(--accent)] text-slate-800'
-                          : 'text-slate-600 hover:bg-[var(--bg-subtle)] hover:text-slate-800'
-                      }`}
-                    >
-                      CORTEX
-                    </button>
-                  </div>
                   <button
                     type="button"
                     onClick={handleSend}
                     disabled={loading}
                     className="btn-primary h-[40px] px-5 shrink-0"
                   >
-                    Run
+                    Submit
                   </button>
                 </div>
+                {urlList.length > 0 && (
+                  <div className="flex flex-wrap gap-2 items-center">
+                    {urlList.map((u, i) => (
+                      <span
+                        key={i}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-none bg-[var(--bg-subtle)] border border-[var(--border)] text-[12px] text-[var(--text-secondary)]"
+                      >
+                        <span className="max-w-[180px] truncate" title={u}>{u}</span>
+                        <button
+                          type="button"
+                          onClick={() => setUrlList((prev) => prev.filter((_, j) => j !== i))}
+                          className="text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                          aria-label="Remove URL"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             ) : (
-              <div className="space-y-3">
-                <div className="flex gap-3 items-center">
-                  <label className="flex-1">
-                    <span className="sr-only">Follow up</span>
-                    <input
-                      type="text"
-                      className="input-base w-full"
-                      placeholder="Follow up..."
-                      value={input}
-                      onChange={(e) => setInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
-                      }}
-                    />
-                  </label>
+              <div className="space-y-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <PipelineModeSelect
+                    value={pipelineMode}
+                    onChange={(m) => {
+                      setImprovedMode(m === 'improved');
+                      setCortexMode(m === 'cortex');
+                    }}
+                    size="sm"
+                  />
+                  {improvedMode && (
+                    <label className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={fastMode}
+                        onChange={(e) => setFastMode(e.target.checked)}
+                        className="rounded-none border-slate-300 text-[var(--accent)] focus:ring-[var(--accent)]"
+                      />
+                      Fast
+                    </label>
+                  )}
                   <button
                     type="button"
                     onClick={handleSend}
                     disabled={loading}
-                    className="btn-primary px-6 shrink-0"
+                    className="btn-primary h-10 px-5 shrink-0 ml-auto"
                   >
-                    Send
+                    Submit
                   </button>
                 </div>
+                <label className="block w-full">
+                  <span className="sr-only">Follow up</span>
+                  <textarea
+                    rows={3}
+                    className="input-base resize-none min-h-[72px] py-2.5 text-sm w-full"
+                    placeholder="Continue the conversation..."
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
+                    }}
+                  />
+                </label>
                 <div className="flex flex-wrap gap-2.5 items-center">
-                  <label className="flex-1 min-w-[160px]">
-                    <span className="sr-only">URLs (optional)</span>
+                  <div className="flex flex-1 min-w-[160px] gap-2 items-center">
                     <input
-                      type="text"
-                      className="input-base h-[40px] py-2 text-sm w-full"
-                      placeholder="Paste URLs (optional)"
-                      value={urls}
-                      onChange={(e) => setUrls(e.target.value)}
+                      type="url"
+                      className="input-base h-[36px] py-2 text-sm flex-1 min-w-0"
+                      placeholder="Add URL"
+                      value={urlInput}
+                      onChange={(e) => setUrlInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          const u = urlInput.trim();
+                          if (u) { setUrlList((prev) => [...prev, u]); setUrlInput(''); }
+                        }
+                      }}
                     />
-                  </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const u = urlInput.trim();
+                        if (u) { setUrlList((prev) => [...prev, u]); setUrlInput(''); }
+                      }}
+                      className="btn-secondary text-sm h-[36px] px-3 shrink-0"
+                    >
+                      Add
+                    </button>
+                  </div>
                   <input ref={fileInputRef} type="file" multiple accept=".txt,.pdf,.md,.json,.csv" className="hidden" onChange={handleUpload} />
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="btn-secondary text-sm h-[40px] px-4 inline-flex items-center gap-2 shrink-0"
+                    className="btn-secondary text-sm h-[36px] px-4 inline-flex items-center gap-2 shrink-0"
                   >
                     <svg className="w-4 h-4 shrink-0 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
-                    Attach files
+                    Attach
                   </button>
                   {uploads.length > 0 && (
                     <span className="text-xs text-slate-500 font-medium">{uploads.length} file(s)</span>
                   )}
-                  <div
-                    role="group"
-                    aria-label="Pipeline mode"
-                    className="inline-flex h-[40px] shrink-0 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] overflow-hidden"
-                  >
-                    <button
-                      type="button"
-                      onClick={() => { setImprovedMode(false); setCortexMode(false); }}
-                      className={`h-full px-3 text-sm font-medium transition-colors ${
-                        pipelineMode === 'standard'
-                          ? 'bg-[var(--accent)] text-slate-800'
-                          : 'text-slate-600 hover:bg-[var(--bg-subtle)] hover:text-slate-800'
-                      }`}
-                    >
-                      Standard
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { setImprovedMode(true); setCortexMode(false); }}
-                      className={`h-full px-3 text-sm font-medium transition-colors ${
-                        pipelineMode === 'improved'
-                          ? 'bg-[var(--accent)] text-slate-800'
-                          : 'text-slate-600 hover:bg-[var(--bg-subtle)] hover:text-slate-800'
-                      }`}
-                    >
-                      Improved
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { setImprovedMode(false); setCortexMode(true); }}
-                      className={`h-full px-3 text-sm font-medium transition-colors ${
-                        pipelineMode === 'cortex'
-                          ? 'bg-[var(--accent)] text-slate-800'
-                          : 'text-slate-600 hover:bg-[var(--bg-subtle)] hover:text-slate-800'
-                      }`}
-                    >
-                      CORTEX
-                    </button>
-                  </div>
+                  {urlList.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {urlList.map((u, i) => (
+                        <span
+                          key={i}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-none bg-[var(--bg-subtle)] border border-[var(--border)] text-[11px] text-[var(--text-secondary)]"
+                        >
+                          <span className="max-w-[120px] truncate" title={u}>{u}</span>
+                          <button type="button" onClick={() => setUrlList((prev) => prev.filter((_, j) => j !== i))} className="text-[var(--text-muted)] hover:text-[var(--text-primary)]" aria-label="Remove">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             )}

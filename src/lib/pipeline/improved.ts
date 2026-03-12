@@ -6,8 +6,8 @@ import { verifySafety } from '@/lib/verifiers';
 
 const DEFAULT_MODEL = process.env.OLLAMA_MODEL ?? 'llama3.2';
 const DEFAULT_TEMP = 0.3;
-const DEFAULT_MAX_TOKENS = 768;
-const N_CANDIDATES = Math.min(5, Math.max(2, parseInt(process.env.IMPROVED_N_CANDIDATES ?? '3', 10)));
+const DEFAULT_MAX_TOKENS = parseInt(process.env.TURBO_MAX_TOKENS ?? '576', 10) || 576;
+const N_CANDIDATES = Math.min(5, Math.max(1, parseInt(process.env.IMPROVED_N_CANDIDATES ?? process.env.CANDIDATE_COUNT ?? '3', 10)));
 
 export interface ImprovedInput {
   prompt: string;

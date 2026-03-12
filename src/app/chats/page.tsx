@@ -37,20 +37,20 @@ export default function ChatsPage() {
       <div className="mb-10">
         <div className="flex items-center gap-3">
           <h1 className="page-title">Chats</h1>
-          <span className="badge text-slate-500 bg-slate-100/90">v1</span>
+          <span className="badge text-[var(--text-muted)] bg-[var(--bg-subtle)]">v1</span>
         </div>
         <p className="page-subtitle">Open a past conversation to continue or view.</p>
       </div>
       {loading ? (
         <p className="text-slate-500 text-sm">Loading…</p>
       ) : signedIn === false ? (
-        <div className="card max-w-md border-amber-200/80 bg-amber-50/30 rounded-xl">
-          <h2 className="font-semibold text-slate-800">Not signed in</h2>
+        <div className="card max-w-md border-[var(--border)]">
+          <h2 className="font-semibold text-[var(--text-primary)]">Not signed in</h2>
           <p className="text-slate-600 text-sm mt-1 mb-4">
-            Sign in or create an account to save your chats and access them from any device.
+            Log in or create an account to save your chats and access them from any device.
           </p>
           <Link href="/auth" className="btn-primary inline-block">
-            Sign in / Sign up
+            Log in / Sign up
           </Link>
         </div>
       ) : chats.length === 0 ? (
@@ -61,7 +61,7 @@ export default function ChatsPage() {
             <li key={c.id}>
               <Link
                 href={`/?chat=${c.id}`}
-                className="block rounded-xl border border-slate-200/90 bg-white p-4 transition-all hover:border-slate-300 hover:shadow-sm hover:bg-slate-50/30"
+                className="block rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] p-4 transition-colors hover:border-[#d6d3d1] hover:bg-[var(--bg-subtle)]"
               >
                 <p className="text-slate-800 font-medium line-clamp-1">{c.title || 'Chat'}</p>
                 <p className="text-xs text-slate-500 mt-1">

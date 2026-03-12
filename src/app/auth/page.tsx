@@ -13,9 +13,9 @@ export default async function AuthPage() {
   return (
     <PageMotion className="max-w-md mx-auto px-4 py-16">
       <div className="card">
-        <h1 className="page-title text-xl">Sign in or create account</h1>
+        <h1 className="page-title text-xl">Log in or create account</h1>
         <p className="text-slate-600 text-sm mt-1 mb-6">
-          Use your email and password to sign in, or create a new account.
+          Use your email and password to log in, or create a new account.
         </p>
         <AuthForm />
         <p className="text-xs text-slate-500 mt-6">
@@ -23,7 +23,7 @@ export default async function AuthPage() {
         </p>
       </div>
       <p className="text-center mt-6">
-        <Link href="/" className="text-sm text-teal-600 hover:text-teal-700">
+        <Link href="/" className="text-sm text-[var(--accent-muted)] hover:text-[var(--accent)]">
           ← Back to Chat
         </Link>
       </p>

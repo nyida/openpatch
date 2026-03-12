@@ -53,7 +53,7 @@ export default async function RunTracePage({ params }: { params: Promise<{ id: s
       <div className="flex items-center justify-between">
         <Link
           href="/runs"
-          className="text-sm font-medium text-teal-600 hover:text-teal-700 transition-colors inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 -ml-1 hover:bg-teal-50/50"
+          className="text-sm font-medium text-[var(--accent-muted)] hover:text-[var(--accent)] transition-colors inline-flex items-center gap-1.5 rounded px-3 py-1.5 -ml-1 hover:bg-[var(--accent-soft)]"
         >
           <span aria-hidden>←</span> Back to Runs
         </Link>
@@ -114,7 +114,7 @@ export default async function RunTracePage({ params }: { params: Promise<{ id: s
                         href={imgUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="group block rounded-lg overflow-hidden border border-slate-200 hover:border-teal-400 hover:shadow-md transition-all duration-200"
+                        className="group block rounded-lg overflow-hidden border border-slate-200 hover:border-blue-300 hover:shadow-md transition-all duration-200"
                       >
                         <img
                           src={imgUrl}
@@ -155,7 +155,7 @@ export default async function RunTracePage({ params }: { params: Promise<{ id: s
             <ul className="space-y-3">
               {searxng.results.map((r, i) => (
                 <li key={i} className="text-sm p-3 rounded-lg bg-slate-50/80 border border-slate-200/60 hover:border-slate-300 transition-colors">
-                  <a href={r.url} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:text-teal-700 font-medium">
+                  <a href={r.url} target="_blank" rel="noopener noreferrer" className="text-[var(--accent-muted)] hover:text-[var(--accent)] font-medium">
                     {r.title || r.url}
                   </a>
                   {r.content && <p className="text-slate-600 mt-0.5 line-clamp-2">{r.content}</p>}
@@ -172,7 +172,7 @@ export default async function RunTracePage({ params }: { params: Promise<{ id: s
                       href={img.source || img.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="group block rounded-lg overflow-hidden border border-slate-200 hover:border-teal-400 hover:shadow-md transition-all duration-200"
+                      className="group block rounded-lg overflow-hidden border border-slate-200 hover:border-blue-300 hover:shadow-md transition-all duration-200"
                     >
                       <img
                         src={img.thumbnail || img.url!}
@@ -199,7 +199,7 @@ export default async function RunTracePage({ params }: { params: Promise<{ id: s
             <ul className="space-y-3">
               {tavily.results.map((r, i) => (
                 <li key={i} className="text-sm p-3 rounded-lg bg-slate-50/80 border border-slate-200/60 hover:border-slate-300 transition-colors">
-                  <a href={r.url} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:text-teal-700 font-medium">
+                  <a href={r.url} target="_blank" rel="noopener noreferrer" className="text-[var(--accent-muted)] hover:text-[var(--accent)] font-medium">
                     {r.title || r.url}
                   </a>
                   {r.content && <p className="text-slate-600 mt-0.5 line-clamp-2">{r.content}</p>}
@@ -216,7 +216,7 @@ export default async function RunTracePage({ params }: { params: Promise<{ id: s
                       href={img.url!}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="group block rounded-lg overflow-hidden border border-slate-200 hover:border-teal-400 hover:shadow-md transition-all duration-200"
+                      className="group block rounded-lg overflow-hidden border border-slate-200 hover:border-blue-300 hover:shadow-md transition-all duration-200"
                     >
                       <img
                         src={img.url!}
@@ -243,7 +243,7 @@ export default async function RunTracePage({ params }: { params: Promise<{ id: s
             <ul className="space-y-3">
               {crossref.results.map((r, i) => (
                 <li key={i} className="text-sm p-3 rounded-lg bg-slate-50/80 border border-slate-200/60 hover:border-slate-300 transition-colors">
-                  <a href={r.url} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:text-teal-700 font-medium">
+                  <a href={r.url} target="_blank" rel="noopener noreferrer" className="text-[var(--accent-muted)] hover:text-[var(--accent)] font-medium">
                     {r.title || r.url}
                   </a>
                   {r.content && <p className="text-slate-600 mt-0.5 line-clamp-2">{r.content}</p>}
@@ -259,7 +259,7 @@ export default async function RunTracePage({ params }: { params: Promise<{ id: s
             <ul className="space-y-3">
               {wikipedia.results.map((r, i) => (
                 <li key={i} className="text-sm p-3 rounded-lg bg-slate-50/80 border border-slate-200/60 hover:border-slate-300 transition-colors">
-                  <a href={r.url} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:text-teal-700 font-medium">
+                  <a href={r.url} target="_blank" rel="noopener noreferrer" className="text-[var(--accent-muted)] hover:text-[var(--accent)] font-medium">
                     {r.title || r.url}
                   </a>
                   {r.content && <p className="text-slate-600 mt-0.5 line-clamp-2">{r.content}</p>}

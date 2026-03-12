@@ -23,6 +23,28 @@ A full-stack app that delivers higher correctness than any single LLM by orchest
 
 ## Setup
 
+### Quick start (local dev, no API keys)
+
+In development, the app uses **Ollama** by default (no OpenRouter/OpenAI key needed):
+
+```bash
+# 1. Install Ollama from https://ollama.ai
+# 2. Start Ollama and pull a model
+ollama serve          # In one terminal (or run in background)
+ollama pull llama3.2  # One-time download
+
+# 3. Install and run the app
+npm install
+cp .env.example .env
+# Set DATABASE_URL in .env (PostgreSQL required)
+npm run db:push
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000). If you see "Ollama is not running", run `ollama serve` in another terminal.
+
+To use OpenRouter instead of Ollama in dev, set `USE_OLLAMA=false` in `.env`.
+
 ### Prerequisites
 
 - Node.js 18+

@@ -30,6 +30,8 @@ export interface RunPipelineResult {
   latencyMs: number;
   /** Present when improvedMode was used; for research export. */
   runTrace?: RunRecord;
+  /** URLs of images from web search or URLs for display when relevant */
+  images?: { url: string; title?: string }[];
 }
 
 export async function executeRun(input: RunInput): Promise<RunPipelineResult> {
@@ -110,7 +112,9 @@ export async function executeRun(input: RunInput): Promise<RunPipelineResult> {
 
   let contextExcerpts = chunks.map((c) => c.text);
   const searchQuery = input.inputText.trim();
-  const useTavily = process.env.TAVILY_ENABLED === 'true' && searchQuery.length > 0;
+  const hasTavilyKey = !!process.env.TAVILY_API_KEY?.trim();
+  const tavilyExplicitlyDisabled = process.env.TAVILY_ENABLED === 'false';
+  const useTavily = hasTavilyKey && !tavilyExplicitlyDisabled && searchQuery.length > 0;
   const useSearXNG = process.env.SEARXNG_ENABLED === 'true' && searchQuery.length > 0 && !useTavily;
 
   const [tavilyData, searxngData, crossrefData, wikipediaData] = await Promise.all([
@@ -164,22 +168,41 @@ export async function executeRun(input: RunInput): Promise<RunPipelineResult> {
     }
   }
 
+  const collectedImages: { url: string; title?: string }[] = [];
+  if (searxngData?.images?.length) {
+    for (const img of searxngData.images.slice(0, 6)) {
+      if (img.url) collectedImages.push({ url: img.url, title: img.title });
+    }
+  }
+  if (tavilyData?.images?.length) {
+    for (const img of tavilyData.images.slice(0, 6)) {
+      if (img.url) collectedImages.push({ url: img.url, title: img.description });
+    }
+  }
+  for (const imgs of Object.values(urlImages)) {
+    for (const url of (imgs ?? []).slice(0, 4)) {
+      if (url) collectedImages.push({ url });
+    }
+  }
+
   const promptForPipeline =
     contextExcerpts.length > 0
       ? `Relevant context:\n${contextExcerpts.map((c, i) => `[${i + 1}] ${c}`).join('\n\n')}\n\nUser question: ${input.inputText}`
       : input.inputText;
   const systemPrompt = `You are a helpful assistant. Answer clearly and thoroughly. Be accurate. For math, show your work.
-When explaining visual concepts (e.g. chess pieces, board layouts, diagrams), reference the images provided in the context. You may include markdown image syntax ![description](url) to show relevant images when they would help the reader. Keep responses substantive but focused—avoid unnecessary padding.`;
+When the context includes image URLs (from web search, diagrams, or linked pages), include 1–3 relevant images in your response using markdown: ![brief description](url). Do this whenever images would help illustrate your answer—e.g. for visual concepts, products, places, diagrams, or step-by-step guides. Use only image URLs that appear in the provided context. Keep responses substantive but focused—avoid unnecessary padding.`;
 
   if (typeof input.improvedMode === 'boolean') {
     const mode = input.improvedMode ? 'improved' : 'baseline';
     const run_id = runIdFromLog(promptForPipeline, mode, runId);
     if (input.improvedMode) {
+      const nCandidates = input.fast ? 1 : undefined;
       const result = await runImproved({
         prompt: promptForPipeline,
         systemPrompt,
         evalMode: false,
         baseSeed: runId,
+        nCandidates,
       });
       const runRecord: RunRecord = {
         run_id,
@@ -214,7 +237,7 @@ When explaining visual concepts (e.g. chess pieces, board layouts, diagrams), re
           ...(wikipediaData ? { wikipediaSearchResults: wikipediaData as object } : {}),
         },
       });
-      return { runId, finalAnswer: result.final_answer, reliability, latencyMs, runTrace: runRecord };
+      return { runId, finalAnswer: result.final_answer, reliability, latencyMs, runTrace: runRecord, images: collectedImages.length ? collectedImages : undefined };
     } else {
       const result = await runBaseline({
         prompt: promptForPipeline,
@@ -249,7 +272,7 @@ When explaining visual concepts (e.g. chess pieces, board layouts, diagrams), re
           ...(wikipediaData ? { wikipediaSearchResults: wikipediaData as object } : {}),
         },
       });
-      return { runId, finalAnswer: result.final_answer, reliability, latencyMs, runTrace: runRecord };
+      return { runId, finalAnswer: result.final_answer, reliability, latencyMs, runTrace: runRecord, images: collectedImages.length ? collectedImages : undefined };
     }
   }
 
@@ -376,5 +399,5 @@ When explaining visual concepts (e.g. chess pieces, board layouts, diagrams), re
   });
 
   logger.info('Run completed', { runId, latencyMs, taskType });
-  return { runId, finalAnswer, reliability, latencyMs };
+  return { runId, finalAnswer, reliability, latencyMs, images: collectedImages.length ? collectedImages : undefined };
 }

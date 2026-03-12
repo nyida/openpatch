@@ -9,7 +9,7 @@ const fallbacks = [
   process.env.DATABASE_URL,
   process.env.POSTGRES_PRISMA_URL,
   process.env.POSTGRES_URL,
-  process.env.PUBLIC_SUPABASE_URL_POSTGRES_PRISMA_URL,
+  process.env.POSTGRES_URL_NON_POOLING,
 ];
 
 const url = fallbacks.find(

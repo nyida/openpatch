@@ -11,7 +11,7 @@ export default async function SettingsPage() {
       <div className="mb-10">
         <div className="flex items-center gap-3">
           <h1 className="page-title">Settings</h1>
-          <span className="badge text-slate-500 bg-slate-100/90">v1</span>
+          <span className="badge text-[var(--text-muted)] bg-[var(--bg-subtle)]">v1</span>
         </div>
         <p className="page-subtitle">Auth and API configuration.</p>
       </div>
@@ -19,8 +19,8 @@ export default async function SettingsPage() {
         <section>
           <h2 className="section-label">Account</h2>
           {session ? (
-            <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4">
-              <p className="text-emerald-800 font-medium">Logged in</p>
+            <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] p-4">
+              <p className="text-[var(--text-primary)] font-medium">Logged in</p>
               <p className="text-slate-700 text-[15px] mt-1">{session.email}</p>
               <p className="text-slate-500 text-sm mt-1">Your chats and runs are saved to your account.</p>
               <form action="/api/auth/logout" method="POST" className="mt-3">
@@ -31,7 +31,7 @@ export default async function SettingsPage() {
             </div>
           ) : (
             <div>
-              <p className="text-slate-600 text-sm mb-3">Sign in to save your chats and access them from any device.</p>
+              <p className="text-slate-600 text-sm mb-3">Log in to save your chats and access them from any device.</p>
               <AuthForm />
             </div>
           )}

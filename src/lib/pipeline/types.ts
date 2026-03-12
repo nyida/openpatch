@@ -16,6 +16,8 @@ export interface RunInput {
   conversationHistory?: { role: string; content: string }[];
   /** When true use multi-sample + judge pipeline; when false use single-call baseline. Omitted = legacy pipeline. */
   improvedMode?: boolean;
+  /** When true use 1 candidate for fastest response (Improved mode only). */
+  fast?: boolean;
 }
 
 export interface RetrievalChunkData {

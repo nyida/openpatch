@@ -8,28 +8,27 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.next({ request });
   }
 
-  let supabaseResponse = NextResponse.next({
-    request,
-  });
-
-  const supabase = createServerClient(
-    url,
-    key,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
+  try {
+    let supabaseResponse = NextResponse.next({ request });
+    const supabase = createServerClient(
+      url,
+      key,
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll();
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              supabaseResponse.cookies.set(name, value, options)
+            );
+          },
         },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          );
-        },
-      },
-    }
-  );
-
-  await supabase.auth.getUser();
-
-  return supabaseResponse;
+      }
+    );
+    await supabase.auth.getUser();
+    return supabaseResponse;
+  } catch {
+    return NextResponse.next({ request });
+  }
 }

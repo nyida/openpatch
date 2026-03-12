@@ -104,7 +104,10 @@ export async function searchWeb(
   ]);
 
   if (!webData) {
-    console.warn('SearXNG web search failed', { query: q.slice(0, 50) });
+    // Skip warning during Next.js production build (SearXNG typically unavailable)
+    if (process.env.NEXT_PHASE !== 'phase-production-build') {
+      console.warn('SearXNG web search failed', { query: q.slice(0, 50) });
+    }
     return null;
   }
 

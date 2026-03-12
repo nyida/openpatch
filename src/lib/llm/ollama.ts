@@ -85,8 +85,16 @@ export async function complete(
     return choice.message.content;
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    if (msg.includes('ECONNREFUSED') || msg.includes('fetch failed') || msg.includes('Failed to fetch')) {
-      throw new Error('Ollama is not running. Start it with: ollama serve');
+    const isConnectionError =
+      msg.includes('ECONNREFUSED') ||
+      msg.includes('ECONNRESET') ||
+      msg.includes('ENOTFOUND') ||
+      msg.includes('ENETUNREACH') ||
+      msg.includes('fetch failed') ||
+      msg.includes('Failed to fetch') ||
+      msg.includes('NetworkError');
+    if (isConnectionError) {
+      throw new Error('Ollama is not running or unreachable. Start it with: ollama serve');
     }
     const fallbackModel = process.env.OLLAMA_MODEL ?? (model === DEFAULT_MODEL ? FALLBACK_MODEL : DEFAULT_MODEL);
     if (isModelNotFoundError(err) && fallbackModel && fallbackModel !== model) {
@@ -167,7 +175,15 @@ export async function embed(texts: string[], model?: string, baseUrlOverride?: s
   } catch (err) {
     clearTimeout(to);
     const msg = err instanceof Error ? err.message : String(err);
-    if (msg.includes('ECONNREFUSED') || msg.includes('fetch failed') || msg.includes('Failed to fetch') || msg.includes('abort')) {
+    const isConnectionError =
+      msg.includes('ECONNREFUSED') ||
+      msg.includes('ECONNRESET') ||
+      msg.includes('ENOTFOUND') ||
+      msg.includes('ENETUNREACH') ||
+      msg.includes('fetch failed') ||
+      msg.includes('Failed to fetch') ||
+      msg.includes('abort');
+    if (isConnectionError) {
       throw new Error('Ollama is not running or timed out. Start it with: ollama serve');
     }
     throw err;
