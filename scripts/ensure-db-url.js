@@ -22,12 +22,14 @@ const url = fallbacks.find(
 if (url) {
   process.env.DATABASE_URL = url.trim();
 } else {
-  // Build-time only: Prisma generate needs env("DATABASE_URL") to parse schema.
-  // It doesn't connect. Runtime uses real DATABASE_URL from Vercel env.
   process.env.DATABASE_URL = 'postgresql://build:build@localhost:5432/build';
 }
 
-execSync('npx prisma generate && next build', {
-  stdio: 'inherit',
-  env: process.env,
-});
+const env = { ...process.env };
+try {
+  execSync('npx prisma generate', { stdio: 'inherit', env });
+  execSync('npx next build', { stdio: 'inherit', env });
+} catch (e) {
+  console.error('\nBuild failed. If DATABASE_URL is missing, add it in Vercel → Settings → Environment Variables (available at Build time).');
+  process.exit(1);
+}
