@@ -67,9 +67,13 @@ function ensureDir() {
 }
 
 export function appendRun(record: RunRecord): void {
-  ensureDir();
-  const line = JSON.stringify(record) + '\n';
-  fs.appendFileSync(LOG_FILE, line, 'utf8');
+  try {
+    ensureDir();
+    const line = JSON.stringify(record) + '\n';
+    fs.appendFileSync(LOG_FILE, line, 'utf8');
+  } catch {
+    // Vercel/serverless: read-only filesystem. Skip file logging.
+  }
 }
 
 export function getRunsLogPath(): string {
