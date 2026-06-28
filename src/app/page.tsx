@@ -6,6 +6,7 @@ import { MarketRow, type DashboardMarket } from '@/components/whale/MarketCard';
 import { LiveRefreshNote } from '@/components/whale/LiveRefreshNote';
 import { WhaleTicker } from '@/components/whale/WhaleTicker';
 import { DataSourcesBanner } from '@/components/whale/DataSourcesBanner';
+import { ArbitrageScanner } from '@/components/ArbitrageScanner';
 import { TopMoversPanel } from '@/components/whale/TopMoversPanel';
 import { DbStatusBanner } from '@/components/whale/DbStatusBanner';
 import {
@@ -260,6 +261,8 @@ export default function DashboardPage() {
           </TableShell>
         </FadeSwap>
       ) : null}
+
+      <ArbitrageScanner />
 
       <WhaleTicker />
     </Shell>
