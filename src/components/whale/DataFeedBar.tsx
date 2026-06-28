@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { RefreshCw } from 'lucide-react';
 import { LiveRefreshNote } from '@/components/whale/LiveRefreshNote';
 import { PaperPortfolio } from '@/components/whale/PaperPortfolio';
 import { DataStatusLine } from '@/components/whale/Shell';
@@ -10,7 +11,7 @@ import { useWebSocket } from '@/hooks/useWebSocket';
 import { fmtUsd } from '@/lib/whale/utils';
 
 export function DataFeedBar() {
-  const { status, lastFetch } = useScrapeStatus();
+  const { status, lastFetch, error, refresh, isLoading } = useScrapeStatus();
   const { portfolio } = useAppStore();
   const { live: wsLive } = useWebSocket();
   const bootstrapped = useRef(false);
@@ -27,7 +28,24 @@ export function DataFeedBar() {
       <div className="data-feed-bar" role="status">
         <div className="shell !py-0 !max-w-[1280px]">
           <div className="data-feed-inner data-status">
-            <DataStatusLine label="Data feeds">Connecting to whale database…</DataStatusLine>
+            {error ? (
+              <>
+                <DataStatusLine label="Data feeds" stale>
+                  {error}
+                </DataStatusLine>
+                <button
+                  type="button"
+                  className="btn btn-ghost text-[10px] !py-1"
+                  onClick={() => refresh()}
+                  disabled={isLoading}
+                >
+                  <RefreshCw className={`w-3 h-3 ${isLoading ? 'animate-spin' : ''}`} />
+                  Retry
+                </button>
+              </>
+            ) : (
+              <DataStatusLine label="Data feeds">Connecting to whale database…</DataStatusLine>
+            )}
           </div>
         </div>
       </div>

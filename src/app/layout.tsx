@@ -5,7 +5,6 @@ import { Nav } from '@/components/Nav';
 import { QueryProvider } from '@/components/providers/QueryProvider';
 import { AppStoreProvider } from '@/context/AppStore';
 import { DataFeedBar } from '@/components/whale/DataFeedBar';
-import { SearchBar } from '@/components/whale/SearchBar';
 import { LiveDataProviders } from '@/components/whale/LiveDataProviders';
 import { SpreadModalProvider } from '@/context/SpreadModalContext';
 import { AppFooter } from '@/components/AppFooter';
@@ -51,7 +50,6 @@ export default function RootLayout({
             <SpreadModalProvider>
               <Nav />
               <DataFeedBar />
-              <SearchBar />
               <LiveDataProviders />
               <main className="flex-1 w-full relative z-[1]">{children}</main>
               <AppFooter />

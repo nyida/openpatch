@@ -10,9 +10,11 @@ const DEFAULT_POLL_MS = 30_000;
 export function useScrapeStatus(pollMs = DEFAULT_POLL_MS) {
   const q = useQuery({
     queryKey: ['status'],
-    queryFn: () => fetchJson<ScrapeStatus>('/api/status'),
+    queryFn: () => fetchJson<ScrapeStatus>('/api/status', undefined, { retries: 3 }),
     refetchInterval: pollMs,
     staleTime: Math.max(pollMs - 5_000, 10_000),
+    retry: 3,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10_000),
   });
 
   return {
@@ -20,5 +22,6 @@ export function useScrapeStatus(pollMs = DEFAULT_POLL_MS) {
     lastFetch: q.dataUpdatedAt > 0 ? q.dataUpdatedAt : null,
     error: q.error ? (q.error instanceof Error ? q.error.message : 'Status unavailable') : null,
     refresh: q.refetch,
+    isLoading: q.isLoading || q.isFetching,
   };
 }

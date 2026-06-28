@@ -2,21 +2,25 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Menu, X } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Menu, Search, X } from 'lucide-react';
 import { useScrapeStatus } from '@/lib/whale/useScrapeStatus';
 import { useWebSocket } from '@/hooks/useWebSocket';
+import { SearchBar } from '@/components/whale/SearchBar';
+import { useAlertsStore } from '@/stores/alertsStore';
 
 const HIGHLIGHT_SPRING = { type: 'spring' as const, stiffness: 420, damping: 34, mass: 0.85 };
 
 const links = [
-  { href: '/', label: 'Dashboard', title: 'Polymarket whale holdings snapshot' },
+  { href: '/', label: 'Dashboard', title: 'Whale holdings vs market odds' },
   { href: '/arbs', label: 'Arbs', title: 'Cross-venue arbitrage scanner' },
-  { href: '/screener', label: 'Screener', title: 'Market screener — Kalshi & Polymarket' },
-  { href: '/live', label: 'Live', title: 'Whale tracking — Polymarket + Kalshi large fills' },
-  { href: '/traders', label: 'Traders', title: 'Polymarket whale leaderboard' },
-  { href: '/markets', label: 'Whales', title: 'Markets by whale notional' },
+  { href: '/screener', label: 'Screener', title: 'Filter markets by volume, prob, date' },
+  { href: '/live', label: 'Live', title: 'Large fills and market alerts' },
+  { href: '/traders', label: 'Traders', title: 'Whale leaderboard by P&L' },
+  { href: '/markets', label: 'Exposure', title: 'Markets ranked by whale notional' },
+  { href: '/alerts', label: 'Alerts', title: 'Price, whale, and arb alerts' },
+  { href: '/tools/kelly', label: 'Kelly', title: 'Position sizing calculator' },
   { href: '/profile', label: 'Profile', title: 'Wallet positions and history' },
 ];
 
@@ -58,14 +62,38 @@ function NavLinkItem({
 export function Nav() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const { status } = useScrapeStatus();
   const { live: wsLive } = useWebSocket();
+  const unreadAlerts = useAlertsStore((s) => s.unreadCount());
   const feedFresh = status?.live_feed_fresh ?? false;
+
+  const toggleSearch = useCallback(() => setSearchOpen((v) => !v), []);
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setSearchOpen((v) => !v);
+      }
+      if (e.key === 'Escape') setSearchOpen(false);
+    }
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
+  useEffect(() => {
+    setSearchOpen(false);
+    setMobileOpen(false);
+  }, [pathname]);
+
+  const liveLabel = wsLive ? 'WS live' : feedFresh ? 'Live' : 'Syncing';
+  const liveColor = wsLive ? 'var(--mint)' : feedFresh ? 'var(--text-2)' : 'var(--text-3)';
 
   return (
     <header className="nav-header sticky top-0 z-30">
-      <div className="shell !py-0 !max-w-[1280px]">
-        <div className="flex items-center justify-between h-11 gap-4">
+      <div className="shell !py-0 !max-w-[1280px] relative">
+        <div className="flex items-center justify-between h-11 gap-3">
           <Link href="/" className="flex items-center gap-2 shrink-0">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -75,12 +103,12 @@ export function Nav() {
               width={24}
               height={24}
             />
-            <span className="text-sm font-medium tracking-tight" style={{ color: 'var(--text)' }}>
+            <span className="text-sm font-semibold tracking-tight" style={{ color: 'var(--text)' }}>
               Algomarket
             </span>
           </Link>
 
-          <nav className="hidden md:flex items-center gap-0.5">
+          <nav className="hidden lg:flex items-center gap-0.5">
             {links.map(({ href, label, title }) => (
               <NavLinkItem
                 key={href}
@@ -94,16 +122,34 @@ export function Nav() {
           </nav>
 
           <div className="flex items-center gap-2">
-            <span
-              className="hidden sm:inline text-[10px] uppercase tracking-wider data-status-line"
-              style={{ color: wsLive ? 'var(--mint)' : feedFresh ? '#ffffff' : 'rgba(255,255,255,0.65)' }}
-              title={wsLive ? 'WebSocket price stream active' : feedFresh ? 'Live feed updating' : 'Live feed catching up'}
-            >
-              {wsLive ? 'WS live' : feedFresh ? 'Live' : 'Syncing'}
-            </span>
             <button
               type="button"
-              className="btn btn-ghost !p-1.5 md:hidden"
+              className="search-trigger"
+              onClick={toggleSearch}
+              aria-label="Search markets"
+              aria-expanded={searchOpen}
+            >
+              <Search className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Search</span>
+              <kbd>⌘K</kbd>
+            </button>
+
+            <Link href="/alerts" className="search-trigger relative hidden sm:inline-flex" title="Alerts">
+              Alerts
+              {unreadAlerts > 0 && <span className="nav-alert-badge">{unreadAlerts}</span>}
+            </Link>
+
+            <span
+              className="hidden md:inline text-[10px] uppercase tracking-wider font-medium"
+              style={{ color: liveColor }}
+              title={wsLive ? 'WebSocket price stream active' : feedFresh ? 'Live feed updating' : 'Live feed catching up'}
+            >
+              {liveLabel}
+            </span>
+
+            <button
+              type="button"
+              className="btn btn-ghost !p-1.5 lg:hidden"
               onClick={() => setMobileOpen((v) => !v)}
               aria-label="Menu"
             >
@@ -112,8 +158,22 @@ export function Nav() {
           </div>
         </div>
 
+        <AnimatePresence>
+          {searchOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.15 }}
+              className="unified-search-wrap unified-search-wrap--overlay !px-0 !py-2"
+            >
+              <SearchBar autoFocus onClose={() => setSearchOpen(false)} />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {mobileOpen && (
-          <nav className="md:hidden flex flex-wrap gap-1 pb-2 pt-2 mt-1" style={{ background: 'rgba(255,255,255,0.03)' }}>
+          <nav className="lg:hidden flex flex-wrap gap-1 pb-2 pt-2 border-t" style={{ borderColor: 'var(--line)' }}>
             {links.map(({ href, label, title }) => (
               <NavLinkItem
                 key={href}

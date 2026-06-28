@@ -11,6 +11,7 @@ import { PaperTradeModal } from '@/components/whale/PaperTradeModal';
 import { SpreadSparkline } from '@/components/whale/SpreadSparkline';
 import { inferMarketCategory } from '@/lib/whale/categories';
 import { marketDetailPath } from '@/lib/whale/marketRoutes';
+import { traderProfilePath } from '@/lib/whale/traderRoutes';
 import { platformExternalUrl } from '@/lib/whale/marketUrls';
 import type { ArbitrageSpread } from '@/services/types';
 import { fmtUsd, isPastMarket, shortWallet } from '@/lib/whale/utils';
@@ -213,7 +214,7 @@ export const MarketRow = memo(function MarketRow({
                             <tr key={`${p.wallet}-${p.outcome}`}>
                               <td className="col-wallet">
                                 <Link
-                                  href={`/profile?wallet=${p.wallet}`}
+                                  href={traderProfilePath(p.wallet)}
                                   className="font-mono text-[11px] hover:underline"
                                   onClick={(e) => e.stopPropagation()}
                                 >

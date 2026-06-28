@@ -38,14 +38,12 @@ export function ResearchBrief({
   return (
     <div className="research-brief">
       <div className="research-brief-body">
-        <h1 className="research-title">Polymarket whale holdings vs. market-implied odds</h1>
+        <h1 className="research-title">Whale holdings vs. market odds</h1>
         <p className="research-abstract">
-          Snapshot of large-wallet positions on Polymarket contracts. For each market we compare
-          aggregate YES share (value-weighted across tracked wallets) against the exchange
-          mid-price. Δ reports the wedge in percentage points; rows expand to list constituent
-          positions. Other venues appear here only when real wallet-level holdings exist.
+          Value-weighted YES share across tracked wallets compared to exchange mid-price.
+          Δ is the wedge in percentage points — expand rows for positions.
         </p>
-        {status && <div className="data-status">{status}</div>}
+        {status && <div className="data-status mt-2">{status}</div>}
       </div>
       {action}
     </div>
@@ -137,12 +135,11 @@ export function StatStrip({ children }: { children: ReactNode }) {
 }
 
 export function StatPill({ label, value, accent }: { label: string; value: string; accent?: 'mint' }) {
-  const color = accent === 'mint' ? 'var(--mint)' : '#ffffff';
   return (
-    <p className="data-status-line stat-pill">
+    <div className="stat-pill">
       <span className="data-status-label">{label}</span>
-      <span style={{ color }}>{value}</span>
-    </p>
+      <span className={`stat-value${accent === 'mint' ? ' stat-value--mint' : ''}`}>{value}</span>
+    </div>
   );
 }
 
@@ -236,14 +233,14 @@ export function Pager({
   const end = Math.min(page * pageSize, total);
   return (
     <div className="page-footer">
-      <p className="text-xs" style={{ color: '#ffffff' }}>
+      <p className="text-xs" style={{ color: 'var(--text-3)' }}>
         {total === 0 ? 'No results' : `${start}–${end} of ${total.toLocaleString()}`}
       </p>
       <div className="flex items-center gap-1">
         <button type="button" className="btn btn-ghost !p-1.5" disabled={page <= 1} onClick={() => onChange(page - 1)}>
           <ChevronLeft className="w-3.5 h-3.5" />
         </button>
-        <span className="font-mono text-xs tabular-nums min-w-[3rem] text-center" style={{ color: '#ffffff' }}>
+        <span className="font-mono text-xs tabular-nums min-w-[3rem] text-center" style={{ color: 'var(--text-2)' }}>
           {page}/{Math.max(totalPages, 1)}
         </span>
         <button type="button" className="btn btn-ghost !p-1.5" disabled={page >= totalPages} onClick={() => onChange(page + 1)}>

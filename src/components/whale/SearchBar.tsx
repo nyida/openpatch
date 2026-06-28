@@ -20,7 +20,7 @@ function keepInputFocus(e: React.MouseEvent) {
   e.preventDefault();
 }
 
-export function SearchBar() {
+export function SearchBar({ autoFocus, onClose }: { autoFocus?: boolean; onClose?: () => void } = {}) {
   const { setSearchResults } = useAppStore();
   const inputRef = useRef<HTMLInputElement>(null);
   const [q, setQ] = useState('');
@@ -63,16 +63,20 @@ export function SearchBar() {
     );
   }
 
+  useEffect(() => {
+    if (autoFocus) inputRef.current?.focus();
+  }, [autoFocus]);
+
   return (
-    <div className="unified-search-wrap">
+    <div className="unified-search-wrap !border-0 !py-0 !px-0 !bg-transparent">
       <div className="unified-search-main">
         <div className="unified-search-bar surface">
-          <Search className="w-4 h-4 opacity-40 shrink-0" aria-hidden />
+          <Search className="w-4 h-4 shrink-0" style={{ color: 'var(--text-3)' }} aria-hidden />
           <input
             ref={inputRef}
             type="search"
             className="unified-search-input"
-            placeholder="Search 700K+ markets across Polymarket & Kalshi…"
+            placeholder="Search markets across Polymarket & Kalshi…"
             value={q}
             onChange={(e) => setQ(e.target.value)}
             onFocus={() => setFocused(true)}
@@ -87,7 +91,12 @@ export function SearchBar() {
             aria-expanded={showDropdown}
             aria-controls="unified-search-results"
           />
-          {isFetching && <span className="text-[10px] opacity-40 font-mono shrink-0">…</span>}
+          {onClose && (
+            <button type="button" className="btn btn-ghost !p-1 shrink-0" onClick={onClose} aria-label="Close search">
+              <span className="text-[10px]" style={{ color: 'var(--text-3)' }}>Esc</span>
+            </button>
+          )}
+          {isFetching && <span className="text-[10px] font-mono shrink-0" style={{ color: 'var(--text-3)' }}>…</span>}
         </div>
 
         {showDropdown && (
@@ -103,7 +112,7 @@ export function SearchBar() {
               </p>
             )}
             {!isError && isFetched && !isFetching && results.length === 0 && (
-              <p className="text-xs p-3 opacity-50">No markets match.</p>
+              <p className="text-xs p-3" style={{ color: 'var(--text-3)' }}>No markets match.</p>
             )}
             {results.map((r) => (
               <button
@@ -152,7 +161,7 @@ export function SearchBar() {
           value={venue}
           onChange={setVenue}
           options={VENUE_OPTIONS}
-          className="!mb-0"
+          className="!mb-0 !p-0 !bg-transparent"
         />
       </div>
     </div>

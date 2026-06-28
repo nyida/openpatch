@@ -68,7 +68,7 @@ export default function MarketsPage() {
 
   return (
     <Shell>
-      <PageHeader title="Markets" description="Whale exposure by contract and venue — auto-updates" />
+      <PageHeader title="Exposure" description="Whale exposure by contract and venue" />
 
       <StatStrip>
         <StatPill label="Markets" value={loading ? '—' : markets.length.toLocaleString()} />

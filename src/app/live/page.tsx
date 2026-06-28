@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ExternalLink } from 'lucide-react';
 import { LiveRefreshNote } from '@/components/whale/LiveRefreshNote';
 import { MarketTitleLink } from '@/components/whale/MarketTitleLink';
@@ -113,6 +113,11 @@ export default function LivePage() {
   usePoll(() => load(true), POLL_MS);
 
   const viewKey = `${platform}-${category}-${minSize}-${limit}`;
+
+  const cumulativeVolume = useMemo(
+    () => trades.reduce((s, t) => s + t.usd_value, 0),
+    [trades],
+  );
   const canLoadMore = trades.length < total && limit < 2000;
 
   return (
@@ -137,6 +142,7 @@ export default function LivePage() {
           value={status ? status.live_kalshi_trades.toLocaleString() : '—'}
           accent={status?.live_feed_fresh ? 'mint' : undefined}
         />
+        <StatPill label="Cumulative vol" value={fmtUsd(cumulativeVolume)} accent="mint" />
         <StatPill label="Showing" value={`${trades.length.toLocaleString()} latest`} />
       </StatStrip>
 

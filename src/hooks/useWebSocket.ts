@@ -18,7 +18,7 @@ export function PriceStreamProvider() {
 
     async function connect() {
       try {
-        const data = await fetchJson<SubsResponse>('/api/price_stream/subs?limit=50', undefined, 45_000);
+        const data = await fetchJson<SubsResponse>('/api/price_stream/subs?limit=50', undefined, { timeoutMs: 45_000 });
         if (cancelled || !data.subs?.length) return;
         startPriceStreams(data.subs, setPrice, setWsStatus);
         started.current = true;

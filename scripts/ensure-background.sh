@@ -35,8 +35,8 @@ if launchctl print "gui/${UID_NUM}/com.algomarket.scraper" &>/dev/null || launch
 else
   echo "[algomarket] Batch launchd not installed — run: npm run scrape:install:all"
   if ! pgrep -f "python3.*scraper.py" >/dev/null 2>&1; then
-    TRADER_COUNT="$(sqlite3 "$ROOT/whale_data.db" "SELECT COUNT(*) FROM traders;" 2>/dev/null || echo 0)"
-    SCRAPE_STATUS="$(sqlite3 "$ROOT/whale_data.db" "SELECT value FROM scrape_metadata WHERE key='scrape_status';" 2>/dev/null || echo "")"
+    TRADER_COUNT="$(sqlite3 "$SCRAPER_DIR/whale_data.db" "SELECT COUNT(*) FROM traders;" 2>/dev/null || echo 0)"
+    SCRAPE_STATUS="$(sqlite3 "$SCRAPER_DIR/whale_data.db" "SELECT value FROM scrape_metadata WHERE key='scrape_status';" 2>/dev/null || echo "")"
     if [[ "$SCRAPE_STATUS" == "in_progress" ]]; then
       echo "[algomarket] Holdings scrape already in progress ($TRADER_COUNT whales) — not starting another"
     elif [[ "$TRADER_COUNT" -lt 50 ]]; then

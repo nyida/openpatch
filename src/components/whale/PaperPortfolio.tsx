@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useMemo } from 'react';
 import { X } from 'lucide-react';
 import { useAppStore, type PaperPosition } from '@/context/AppStore';
@@ -15,8 +16,8 @@ function positionPnl(p: PaperPosition, currentPrice: number) {
   return shares * currentPrice - p.size_usd;
 }
 
-export function PaperPortfolio({ onClose }: { onClose: () => void }) {
-  const { portfolio, resetPortfolio, unrealizedPnl } = useAppStore();
+export function PaperPortfolio({ onClose, inline }: { onClose?: () => void; inline?: boolean }) {
+  const { portfolio, resetPortfolio, unrealizedPnl, closePaperPosition } = useAppStore();
   const { data: arbData } = useArbitrageMap();
   const livePrices = usePriceStore((s) => s.prices);
 
@@ -45,17 +46,18 @@ export function PaperPortfolio({ onClose }: { onClose: () => void }) {
 
   const totalValue = portfolio.cash + openPositions.reduce((s, p) => s + p.size_usd, 0) + unrealized;
 
-  return (
-    <div className="paper-modal-backdrop" onClick={onClose} role="presentation">
-      <div className="spread-modal surface max-w-3xl" onClick={(e) => e.stopPropagation()} role="dialog">
+  const content = (
+    <>
         <div className="flex items-start justify-between gap-3 mb-4">
           <div>
-            <p className="text-[10px] uppercase tracking-wider opacity-50">Paper trading</p>
+            <p className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--text-3)' }}>Paper trading</p>
             <h2 className="text-sm font-medium mt-0.5">Virtual portfolio</h2>
           </div>
-          <button type="button" className="icon-btn" onClick={onClose} aria-label="Close">
-            <X className="w-4 h-4" />
-          </button>
+          {onClose && (
+            <button type="button" className="icon-btn" onClick={onClose} aria-label="Close">
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
@@ -96,6 +98,7 @@ export function PaperPortfolio({ onClose }: { onClose: () => void }) {
                   <th className="text-right">Notional</th>
                   <th className="text-right">P&amp;L</th>
                   <th>Status</th>
+                  <th />
                 </tr>
               </thead>
               <tbody>
@@ -132,8 +135,19 @@ export function PaperPortfolio({ onClose }: { onClose: () => void }) {
                         {pnl >= 0 ? '+' : ''}
                         {fmtUsd(pnl)}
                       </td>
-                      <td className="text-[10px] uppercase opacity-60">
+                      <td className="text-[10px] uppercase" style={{ color: 'var(--text-3)' }}>
                         {p.closed_at ? 'Closed' : 'Open'}
+                      </td>
+                      <td className="text-right">
+                        {!p.closed_at && (
+                          <button
+                            type="button"
+                            className="btn btn-ghost text-[10px] !py-1"
+                            onClick={() => closePaperPosition(p.id, cur)}
+                          >
+                            Close
+                          </button>
+                        )}
                       </td>
                     </tr>
                   );
@@ -144,13 +158,29 @@ export function PaperPortfolio({ onClose }: { onClose: () => void }) {
         )}
 
         <div className="flex justify-end gap-2 mt-4">
+          <Link href="/tools/portfolio" className="btn btn-ghost text-xs">
+            Full view
+          </Link>
           <button type="button" className="btn btn-ghost text-xs" onClick={resetPortfolio}>
             Reset $10K
           </button>
-          <button type="button" className="btn btn-primary text-xs" onClick={onClose}>
-            Close
-          </button>
+          {onClose && (
+            <button type="button" className="btn btn-primary text-xs" onClick={onClose}>
+              Close
+            </button>
+          )}
         </div>
+    </>
+  );
+
+  if (inline) {
+    return <div className="spread-modal surface max-w-3xl w-full">{content}</div>;
+  }
+
+  return (
+    <div className="paper-modal-backdrop" onClick={onClose} role="presentation">
+      <div className="spread-modal surface max-w-3xl" onClick={(e) => e.stopPropagation()} role="dialog">
+        {content}
       </div>
     </div>
   );

@@ -1,11 +1,16 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { MarketRow, type DashboardMarket } from '@/components/whale/MarketCard';
 import { LiveRefreshNote } from '@/components/whale/LiveRefreshNote';
+import { WhaleTicker } from '@/components/whale/WhaleTicker';
+import { DataSourcesBanner } from '@/components/whale/DataSourcesBanner';
+import { TopMoversPanel } from '@/components/whale/TopMoversPanel';
+import { DbStatusBanner } from '@/components/whale/DbStatusBanner';
 import {
   Shell,
-  ResearchBrief,
+  PageHeader,
   SearchInput,
   Segmented,
   Pager,
@@ -14,22 +19,23 @@ import {
   Toolbar,
   SectorNav,
   FadeSwap,
-  DataStatusLine,
   StatStrip,
   StatPill,
 } from '@/components/whale/Shell';
 import { inferMarketCategory, MARKET_CATEGORIES, type MarketCategory } from '@/lib/whale/categories';
 import { useScrapeStatus } from '@/lib/whale/useScrapeStatus';
-import { WhaleTicker } from '@/components/whale/WhaleTicker';
-import { CryptoOverviewStrip } from '@/components/whale/CryptoOverviewStrip';
-import { DataSourcesBanner } from '@/components/whale/DataSourcesBanner';
 import { fetchJson } from '@/lib/whale/fetch';
 import { useArbitrageMap } from '@/lib/whale/hooks';
 import { lookupSpread } from '@/services/arbitrage.utils';
-import { isPastMarket, platformLabel, type Platform } from '@/lib/whale/utils';
+import { isPastMarket, platformLabel, type Platform, fmtUsd } from '@/lib/whale/utils';
+
+const CryptoOverviewStrip = dynamic(
+  () => import('@/components/whale/CryptoOverviewStrip').then((m) => m.CryptoOverviewStrip),
+  { ssr: false, loading: () => null },
+);
 
 const PAGE_SIZE = 30;
-const POLL_MS = 15000;
+const POLL_MS = 30_000;
 
 const SECTOR_TABS: { id: MarketCategory | 'all'; label: string }[] = [
   { id: 'all', label: 'All' },
@@ -38,7 +44,7 @@ const SECTOR_TABS: { id: MarketCategory | 'all'; label: string }[] = [
 
 export default function DashboardPage() {
   const [markets, setMarkets] = useState<DashboardMarket[]>([]);
-  const { status } = useScrapeStatus();
+  const { status, error: statusError, refresh: refreshStatus, isLoading: statusLoading } = useScrapeStatus();
   const [lastFetch, setLastFetch] = useState<number | null>(null);
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState<'open' | 'archived'>('open');
@@ -48,8 +54,8 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const pollMs = status?.scrape_in_progress ? 5000 : POLL_MS;
-  const { data: arbData } = useArbitrageMap();
+  const pollMs = status?.scrape_in_progress ? 10000 : POLL_MS;
+  const { data: arbData } = useArbitrageMap(0, { refetch: false });
   const arbMap = arbData?.byPolyTitle ?? {};
 
   const load = useCallback(
@@ -58,7 +64,7 @@ export default function DashboardPage() {
       setError(null);
       try {
         const qs = platform !== 'all' ? `?platform=${platform}` : '';
-        const data = await fetchJson<DashboardMarket[]>(`/api/dashboard${qs}`);
+        const data = await fetchJson<DashboardMarket[]>(`/api/dashboard${qs}`, undefined, { retries: 3 });
         if (!Array.isArray(data)) throw new Error('Invalid response');
         setMarkets(data);
         setLastFetch(Date.now());
@@ -122,42 +128,41 @@ export default function DashboardPage() {
   const pageItems = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
   const viewKey = `${platform}-${category}-${tab}-${safePage}`;
 
-  const statusText = status?.scrape_in_progress
-    ? `Rebuilding · ${status.trader_count} / ${status.whale_target} whales · ${status.position_count.toLocaleString()} positions · ${status.contract_count.toLocaleString()} contracts`
-    : status
-      ? `${status.trader_count} whales · ${status.position_count.toLocaleString()} positions · ${status.contract_count.toLocaleString()} contracts`
-      : 'Connecting to database…';
+  const totalExposure = useMemo(
+    () => openFiltered.reduce((s, m) => s + m.total_usd, 0),
+    [openFiltered],
+  );
 
   return (
     <Shell>
-      <ResearchBrief
-        status={
-          <DataStatusLine label="Polymarket whale holdings">
-            {statusText}
-            {lastFetch && (
-              <>
-                {' · '}
-                <LiveRefreshNote lastFetch={lastFetch} label="Synced" />
-                                  </>
-                                )}
-          </DataStatusLine>
-        }
+      <PageHeader
+        title="Whale holdings vs. market odds"
+        description="Value-weighted YES share across tracked wallets compared to exchange mid-price."
+        action={lastFetch ? <LiveRefreshNote lastFetch={lastFetch} label="Synced" /> : null}
       />
+
+      <DbStatusBanner error={statusError ?? error} onRetry={() => { refreshStatus(); load(); }} loading={statusLoading || loading} />
 
       {status && (
         <StatStrip>
-          <StatPill label="Contracts" value={openFiltered.length.toLocaleString()} accent="mint" />
+          <StatPill label="Open contracts" value={openFiltered.length.toLocaleString()} accent="mint" />
           <StatPill label="Whales tracked" value={`${status.trader_count} / ${status.whale_target}`} />
+          <StatPill label="Total exposure" value={fmtUsd(totalExposure)} />
           <StatPill label="Live fills" value={status.live_trade_count.toLocaleString()} />
           <StatPill label="Leaderboard" value={status.all_trader_count.toLocaleString()} />
         </StatStrip>
       )}
 
       <DataSourcesBanner />
+      <TopMoversPanel since="1h" limit={6} />
       <CryptoOverviewStrip />
 
-      {showVenueNav && <SectorNav value={platform} onChange={setPlatform} options={platformTabs} />}
-      <SectorNav value={category} onChange={setCategory} options={SECTOR_TABS} />
+      <div className="flex flex-wrap gap-2 mb-3">
+        {showVenueNav && (
+          <SectorNav value={platform} onChange={setPlatform} options={platformTabs} className="!mb-0 flex-1" />
+        )}
+        <SectorNav value={category} onChange={setCategory} options={SECTOR_TABS} className="!mb-0 flex-1" />
+      </div>
 
       <Toolbar>
         <SearchInput value={search} onChange={setSearch} placeholder="Filter contracts…" />
@@ -175,20 +180,24 @@ export default function DashboardPage() {
       {error && (
         <div className="error-banner">
           <p>{error}</p>
-                          </div>
-                        )}
+        </div>
+      )}
 
       {loading ? (
-        <div className="surface overflow-hidden p-4">
-          <p className="text-xs mb-3">Loading market panel…</p>
-          <SkeletonTable rows={14} />
-                      </div>
+        <SkeletonTable rows={14} />
       ) : !error && filtered.length === 0 ? (
         <FadeSwap viewKey={`empty-${viewKey}`}>
           <div className="empty surface">
-            {markets.length === 0
-              ? 'No market data returned. Check that whale_data.db is accessible.'
-              : 'No contracts match the current filter set.'}
+            {markets.length === 0 ? (
+              <>
+                <span className="empty-title">No whale data yet</span>
+                <span className="empty-hint">
+                  Set WHALE_DB_PATH in .env.local or run npm run scrape:ensure
+                </span>
+              </>
+            ) : (
+              <span className="empty-title">No contracts match the current filters</span>
+            )}
           </div>
         </FadeSwap>
       ) : !error ? (

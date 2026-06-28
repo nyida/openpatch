@@ -3,7 +3,15 @@ import { inferMarketCategory, type MarketCategory } from './categories';
 import { platformExternalUrl, resolveExternalUrl } from './marketUrls';
 import type { Platform } from './utils';
 
-export type TraderRow = { wallet: string; display_name: string; alltime_profit: number; rank: number };
+export type TraderRow = {
+  wallet: string;
+  display_name: string;
+  alltime_profit: number;
+  rank: number;
+  trade_count?: number;
+  win_rate?: number;
+  position_count?: number;
+};
 
 function externalUrl(platform: string, title: string): string {
   return platformExternalUrl(platform, { title });
@@ -20,9 +28,35 @@ export function getTraders(): TraderRow[] {
 export function getAllTraders(): TraderRow[] {
   const db = getDb();
   const rows = db
-    .prepare('SELECT wallet, display_name, alltime_profit FROM all_traders ORDER BY alltime_profit DESC')
-    .all() as { wallet: string; display_name: string; alltime_profit: number }[];
-  return rows.map((row, i) => ({ ...row, rank: i + 1 }));
+    .prepare(`
+      SELECT
+        a.wallet,
+        a.display_name,
+        a.alltime_profit,
+        (SELECT COUNT(*) FROM trades t WHERE t.wallet = a.wallet) AS trade_count,
+        (SELECT COUNT(*) FROM positions p WHERE p.wallet = a.wallet) AS position_count,
+        (
+          SELECT CASE WHEN COUNT(*) > 0
+            THEN CAST(SUM(CASE WHEN realized_profit > 0 THEN 1 ELSE 0 END) AS REAL) / COUNT(*)
+            ELSE 0 END
+          FROM trades t WHERE t.wallet = a.wallet AND t.side = 'SELL'
+        ) AS win_rate
+      FROM all_traders a
+      ORDER BY a.alltime_profit DESC
+    `)
+    .all() as {
+    wallet: string;
+    display_name: string;
+    alltime_profit: number;
+    trade_count: number;
+    position_count: number;
+    win_rate: number;
+  }[];
+  return rows.map((row, i) => ({
+    ...row,
+    rank: i + 1,
+    win_rate: Math.round((row.win_rate ?? 0) * 1000) / 10,
+  }));
 }
 
 export function getAllMarkets() {

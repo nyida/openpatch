@@ -1,9 +1,10 @@
 'use client';
 
-import Link from 'next/link';
+import { useState } from 'react';
 import { NetROIBadge } from '@/components/whale/NetROIBadge';
 import { SpreadSparkline } from '@/components/whale/SpreadSparkline';
 import { ArbAlertsBar } from '@/components/whale/ArbAlertsBar';
+import { AlertButton } from '@/components/whale/AlertButton';
 import {
   Shell,
   PageHeader,
@@ -13,6 +14,7 @@ import {
   StatStrip,
   StatPill,
   Pager,
+  Toolbar,
 } from '@/components/whale/Shell';
 import { DataSourcesBanner } from '@/components/whale/DataSourcesBanner';
 import { LiveRefreshNote } from '@/components/whale/LiveRefreshNote';
@@ -25,19 +27,24 @@ const PAGE_SIZE = 40;
 const MIN_SPREAD = 0.02;
 
 export default function ArbScannerPage() {
+  const [page, setPage] = useState(1);
+  const [minProfitCents, setMinProfitCents] = useState(2);
   const { data, isLoading, isError, dataUpdatedAt } = useArbitrageMap(MIN_SPREAD);
   const pairs = (data?.pairs ?? [])
-    .filter((p) => Math.abs(p.spread) >= MIN_SPREAD)
+    .filter((p) => Math.abs(p.spread) >= MIN_SPREAD && p.net_profit_cents >= minProfitCents)
     .sort((a, b) => b.net_profit_cents - a.net_profit_cents);
 
   const profitable = pairs.filter((p) => p.roi.tier === 'green').length;
   const marginal = pairs.filter((p) => p.roi.tier === 'yellow').length;
+  const totalPages = Math.max(1, Math.ceil(pairs.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pageItems = pairs.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   return (
     <Shell>
       <PageHeader
         title="Arbitrage scanner"
-        description="Cross-venue gaps ≥ 2¢ between Polymarket & Kalshi — sorted by net profit after fees. Enable POLYROUTER_API_KEY for unified 7-platform discovery."
+        description="Cross-venue gaps ≥ 2¢ between Polymarket & Kalshi — sorted by net profit after fees."
         action={dataUpdatedAt ? <LiveRefreshNote lastFetch={dataUpdatedAt} label="Scanned" /> : null}
       />
 
@@ -52,6 +59,23 @@ export default function ArbScannerPage() {
 
       <ArbAlertsBar pairs={pairs} />
 
+      <Toolbar>
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <span style={{ color: 'var(--text-3)' }}>Min net profit</span>
+          {[1, 2, 5, 10].map((c) => (
+            <button
+              key={c}
+              type="button"
+              className="btn btn-ghost !py-1 !px-2"
+              data-active={minProfitCents === c}
+              onClick={() => { setMinProfitCents(c); setPage(1); }}
+            >
+              {c}¢+
+            </button>
+          ))}
+        </div>
+      </Toolbar>
+
       {isError && (
         <div className="error-banner">
           <p>Failed to load arbitrage data. Retrying…</p>
@@ -61,8 +85,20 @@ export default function ArbScannerPage() {
       {isLoading && pairs.length === 0 ? (
         <SkeletonTable rows={12} />
       ) : (
-        <FadeSwap viewKey={`arbs-${pairs.length}-${dataUpdatedAt}`}>
-          <TableShell>
+        <FadeSwap viewKey={`arbs-${pairs.length}-${safePage}-${dataUpdatedAt}`}>
+          <TableShell
+            footer={
+              pairs.length > PAGE_SIZE ? (
+                <Pager
+                  page={safePage}
+                  totalPages={totalPages}
+                  total={pairs.length}
+                  pageSize={PAGE_SIZE}
+                  onChange={setPage}
+                />
+              ) : undefined
+            }
+          >
             <table className="data-table screener-table">
               <thead>
                 <tr>
@@ -80,13 +116,18 @@ export default function ArbScannerPage() {
                 {pairs.length === 0 && (
                   <tr>
                     <td colSpan={8}>
-                      <div className="empty">No arbs above 2¢ right now. Check back in ~10s.</div>
+                      <div className="empty">
+                        <span className="empty-title">No arbs above 2¢ right now</span>
+                        <span className="empty-hint">Refreshes every ~30s</span>
+                      </div>
                     </td>
                   </tr>
                 )}
-                {pairs.slice(0, PAGE_SIZE).map((spread, i) => (
+                {pageItems.map((spread, i) => (
                   <tr key={spread.id}>
-                    <td className="font-mono tabular-nums">{i + 1}</td>
+                    <td className="font-mono tabular-nums" style={{ color: 'var(--text-3)' }}>
+                      {(safePage - 1) * PAGE_SIZE + i + 1}
+                    </td>
                     <td className="col-market">
                       <a
                         href={marketDetailPath(spread.poly_title, 'polymarket', {
@@ -95,7 +136,9 @@ export default function ArbScannerPage() {
                         className="block hover:underline"
                       >
                         <div className="market-title leading-snug">{spread.poly_title}</div>
-                        <div className="text-[10px] mt-0.5 opacity-50">↔ {spread.kalshi_title}</div>
+                        <div className="text-[10px] mt-0.5" style={{ color: 'var(--text-3)' }}>
+                          ↔ {spread.kalshi_title}
+                        </div>
                       </a>
                     </td>
                     <td className="text-right font-mono tabular-nums">{(spread.poly_price * 100).toFixed(1)}%</td>
@@ -112,10 +155,17 @@ export default function ArbScannerPage() {
                         netCents={spread.net_profit_cents}
                       />
                     </td>
-                    <td className="text-right font-mono tabular-nums text-[10px] opacity-60">
+                    <td className="text-right font-mono tabular-nums text-[10px]" style={{ color: 'var(--text-3)' }}>
                       {fmtRelativeTime(Math.floor(spread.last_seen_at / 1000))}
                     </td>
                     <td className="text-right whitespace-nowrap">
+                      <AlertButton
+                        type="arb"
+                        label={`Arb ${spread.net_profit_cents.toFixed(1)}¢: ${spread.poly_title.slice(0, 24)}`}
+                        marketTitle={spread.poly_title}
+                        spreadId={spread.id}
+                        threshold={spread.net_profit_cents}
+                      />
                       <a
                         href={spread.poly_url || platformExternalUrl('polymarket', { title: spread.poly_title })}
                         target="_blank"
@@ -138,14 +188,11 @@ export default function ArbScannerPage() {
               </tbody>
             </table>
           </TableShell>
-          {pairs.length > PAGE_SIZE && (
-            <Pager page={1} totalPages={1} total={pairs.length} pageSize={PAGE_SIZE} onChange={() => {}} />
-          )}
         </FadeSwap>
       )}
 
-      <p className="text-[10px] opacity-50 mt-4 text-center">
-        Net profit = gross spread − 1.5% Kalshi fee − 1% Poly fee − $0.75 gas · refreshes every 10s
+      <p className="text-[10px] mt-4 text-center" style={{ color: 'var(--text-3)' }}>
+        Net profit = gross spread − 1.5% Kalshi fee − 1% Poly fee − $0.75 gas
       </p>
     </Shell>
   );

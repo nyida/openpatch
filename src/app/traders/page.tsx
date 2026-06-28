@@ -2,8 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { traderProfilePath } from '@/lib/whale/traderRoutes';
 import { fmtUsd, shortWallet } from '@/lib/whale/utils';
 import { usePoll } from '@/lib/whale/usePoll';
+import { fetchJson } from '@/lib/whale/fetch';
+import { smartMoneyScore, smartMoneyTier } from '@/lib/analytics/smartMoney';
+import { FollowButton } from '@/components/whale/FollowButton';
+import { DbStatusBanner } from '@/components/whale/DbStatusBanner';
 import {
   Shell,
   PageHeader,
@@ -24,6 +29,9 @@ type Trader = {
   display_name: string;
   alltime_profit: number;
   rank: number;
+  trade_count?: number;
+  win_rate?: number;
+  position_count?: number;
 };
 
 export default function TradersPage() {
@@ -31,15 +39,17 @@ export default function TradersPage() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      const res = await fetch('/api/all_traders', { cache: 'no-store' });
-      if (res.ok) setTraders(await res.json());
-      else if (!silent) setTraders([]);
-    } catch {
+      const data = await fetchJson<Trader[]>('/api/all_traders', undefined, { retries: 2 });
+      setTraders(data);
+      setError(null);
+    } catch (e) {
       if (!silent) setTraders([]);
+      setError(e instanceof Error ? e.message : 'Failed to load traders');
     } finally {
       setLoading(false);
     }
@@ -66,15 +76,22 @@ export default function TradersPage() {
   useEffect(() => setPage(1), [search]);
 
   const totalProfit = traders.reduce((s, t) => s + t.alltime_profit, 0);
+  const avgWinRate =
+    traders.length > 0
+      ? traders.reduce((s, t) => s + (t.win_rate ?? 0), 0) / traders.length
+      : 0;
 
   return (
     <Shell>
-      <PageHeader title="Leaderboard" description="All-time profit by Polymarket whale wallets — auto-updates" />
+      <PageHeader title="Leaderboard" description="All-time profit by Polymarket whale wallets — smart money scores and follow list" />
+
+      <DbStatusBanner error={error} onRetry={load} loading={loading} />
 
       <StatStrip>
         <StatPill label="Traders" value={loading ? '—' : traders.length.toLocaleString()} />
-        <StatPill label="Top" value={loading ? '—' : fmtUsd(traders[0]?.alltime_profit ?? 0)} accent="mint" />
-        <StatPill label="Combined" value={loading ? '—' : fmtUsd(totalProfit)} />
+        <StatPill label="Top profit" value={loading ? '—' : fmtUsd(traders[0]?.alltime_profit ?? 0)} accent="mint" />
+        <StatPill label="Combined P&amp;L" value={loading ? '—' : fmtUsd(totalProfit)} />
+        <StatPill label="Avg win rate" value={loading ? '—' : `${avgWinRate.toFixed(1)}%`} />
       </StatStrip>
 
       <Toolbar>
@@ -97,29 +114,54 @@ export default function TradersPage() {
                 <th>#</th>
                 <th>Trader</th>
                 <th className="text-right">Profit</th>
+                <th className="text-right">Win%</th>
+                <th className="text-right">Trades</th>
+                <th>Score</th>
                 <th />
               </tr>
             </thead>
             <tbody>
-              {pageItems.map((t) => (
-                <tr key={t.wallet}>
-                  <td className="font-mono tabular-nums w-10" style={{ color: 'var(--text-3)' }}>
-                    {t.rank}
-                  </td>
-                  <td>
-                    <div className="font-medium">{t.display_name || shortWallet(t.wallet)}</div>
-                    <div className="font-mono text-[10px]" style={{ color: 'var(--text-3)' }}>{shortWallet(t.wallet)}</div>
-                  </td>
-                  <td className="text-right font-mono tabular-nums font-medium" style={{ color: t.alltime_profit >= 0 ? 'var(--mint)' : 'var(--rose)' }}>
-                    {fmtUsd(t.alltime_profit)}
-                  </td>
-                  <td className="text-right">
-                    <Link href={`/profile?wallet=${t.wallet}`} className="btn btn-ghost">
-                      View
-                    </Link>
-                  </td>
-                </tr>
-              ))}
+              {pageItems.map((t) => {
+                const score = smartMoneyScore({
+                  alltimeProfit: t.alltime_profit,
+                  winRate: (t.win_rate ?? 0) / 100,
+                  tradeCount: t.trade_count ?? 0,
+                  maxDrawdown: Math.max(t.alltime_profit * 0.2, 1),
+                  rank: t.rank,
+                });
+                const tier = smartMoneyTier(score);
+                return (
+                  <tr key={t.wallet}>
+                    <td className="font-mono tabular-nums w-10" style={{ color: 'var(--text-3)' }}>
+                      {t.rank}
+                    </td>
+                    <td>
+                      <div className="flex items-center gap-1">
+                        <FollowButton wallet={t.wallet} />
+                        <div>
+                          <div className="font-medium">{t.display_name || shortWallet(t.wallet)}</div>
+                          <div className="font-mono text-[10px]" style={{ color: 'var(--text-3)' }}>
+                            {shortWallet(t.wallet)}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="text-right font-mono tabular-nums font-medium" style={{ color: t.alltime_profit >= 0 ? 'var(--mint)' : 'var(--rose)' }}>
+                      {fmtUsd(t.alltime_profit)}
+                    </td>
+                    <td className="text-right font-mono tabular-nums">{(t.win_rate ?? 0).toFixed(1)}%</td>
+                    <td className="text-right font-mono tabular-nums">{(t.trade_count ?? 0).toLocaleString()}</td>
+                    <td>
+                      <span className="smart-money-tier" data-tier={tier}>{tier}</span>
+                    </td>
+                    <td className="text-right">
+                      <Link href={traderProfilePath(t.wallet)} className="btn btn-ghost">
+                        View
+                      </Link>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </TableShell>

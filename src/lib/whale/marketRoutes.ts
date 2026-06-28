@@ -85,17 +85,14 @@ export type MarketLinkExtras = {
   event?: string | null;
 };
 
-/** Build internal market detail URL — query params only (reliable client navigation). */
+/** Build canonical market detail URL using encoded ID. */
 export function marketDetailPath(
   title: string,
   platform: string,
   extras?: MarketLinkExtras,
 ): string {
-  const clean = cleanMarketTitle(title);
-  const venue = normalizeMarketVenue(platform);
+  const id = encodeMarketId(title, platform);
   const params = new URLSearchParams();
-  params.set('title', clean);
-  params.set('platform', venue);
   if (extras?.price != null && Number.isFinite(extras.price)) {
     params.set('price', String(extras.price));
   }
@@ -103,7 +100,8 @@ export function marketDetailPath(
     params.set('volume', String(extras.volume));
   }
   if (extras?.event) params.set('event', extras.event);
-  return `/market/view?${params.toString()}`;
+  const qs = params.toString();
+  return `/market/${id}${qs ? `?${qs}` : ''}`;
 }
 
 /** Prefer explicit query params — they survive URL encoding issues. */
