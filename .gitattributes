@@ -1,1 +1,1 @@
-public/whale_data.db filter=lfs diff=lfs merge=lfs -text
+# Keep whale DB as a normal git binary (not LFS) so Render clones get the real file.

@@ -12,7 +12,7 @@
     "scrape:install": "bash scripts/install-launchd.sh",
     "scrape:install:all": "bash scripts/install-all.sh",
     "scrape:ensure": "bash scripts/ensure-background.sh",
-    "build": "next build",
+    "build": "node scripts/ensure-whale-db.js && next build",
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",
