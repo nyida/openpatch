@@ -3,13 +3,16 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { ensureSchema } from './migrate';
+import { resolveDataDir } from '@/lib/paths';
 
 function expandHome(p: string): string {
   if (p.startsWith('~/')) return path.join(os.homedir(), p.slice(2));
   return p;
 }
 
-/** Resolve whale_data.db - checks env, scraper dir, project root, and common defaults. */
+export { resolveDataDir } from '@/lib/paths';
+
+/** Resolve whale_data.db - env, Render disk, shipped storage/, scraper dir, project. */
 export function resolveDbPath(): string {
   if (process.env.WHALE_DB_PATH) {
     return path.resolve(expandHome(process.env.WHALE_DB_PATH));
@@ -20,6 +23,8 @@ export function resolveDbPath(): string {
     : path.join(os.homedir(), 'Desktop', 'PolymarketAnalysis');
 
   const candidates = [
+    path.join(resolveDataDir(), 'whale_data.db'),
+    path.resolve('./storage/whale_data.db'),
     path.join(scraperDir, 'whale_data.db'),
     path.resolve('./whale_data.db'),
     path.resolve('./public/whale_data.db'),
@@ -29,7 +34,7 @@ export function resolveDbPath(): string {
     if (fs.existsSync(candidate)) return candidate;
   }
 
-  return path.resolve('./public/whale_data.db');
+  return path.join(resolveDataDir(), 'whale_data.db');
 }
 
 const DB_PATH = resolveDbPath();
@@ -79,7 +84,7 @@ function migrateOnce() {
 export function getDb(): Database.Database {
   if (!isDbAvailable()) {
     throw new Error(
-      `Database not found at ${DB_PATH}. Set WHALE_DB_PATH in .env.local or run npm run scrape:ensure`,
+      `Database not found at ${DB_PATH}. Set WHALE_DB_PATH or ship storage/whale_data.db (see README).`,
     );
   }
   if (!db) {

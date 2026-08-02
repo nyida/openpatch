@@ -19,6 +19,13 @@ coverage
 .venv-evals/
 app_runs/
 
-# Auth/billing local store
+# Auth/billing local store (dev)
 data/
+
+# Ship a slim production whale DB for Render/VPS
+!storage/
+storage/*
+!storage/whale_data.db
+!storage/README.md
+
 

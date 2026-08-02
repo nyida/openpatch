@@ -2,13 +2,19 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import path from 'path';
 import { randomUUID } from 'crypto';
 import type { AuthUser, SubscriptionTier, UserProfile } from './types';
+import { resolveDataDir } from '@/lib/paths';
 
 type StoreFile = {
   users: AuthUser[];
 };
 
-const DATA_DIR = path.join(process.cwd(), 'data');
-const STORE_PATH = path.join(DATA_DIR, 'auth-store.json');
+function storePaths() {
+  const dataDir = resolveDataDir();
+  return {
+    dataDir,
+    storePath: path.join(dataDir, 'auth-store.json'),
+  };
+}
 
 const usersById = new Map<string, AuthUser>();
 const usersByEmail = new Map<string, AuthUser>();
@@ -17,9 +23,10 @@ let loaded = false;
 function ensureLoaded() {
   if (loaded) return;
   loaded = true;
+  const { storePath } = storePaths();
   try {
-    if (!existsSync(STORE_PATH)) return;
-    const raw = readFileSync(STORE_PATH, 'utf8');
+    if (!existsSync(storePath)) return;
+    const raw = readFileSync(storePath, 'utf8');
     const parsed = JSON.parse(raw) as StoreFile;
     for (const u of parsed.users || []) {
       usersById.set(u.id, u);
@@ -31,9 +38,10 @@ function ensureLoaded() {
 }
 
 function persist() {
-  if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
+  const { dataDir, storePath } = storePaths();
+  if (!existsSync(dataDir)) mkdirSync(dataDir, { recursive: true });
   const users = Array.from(usersById.values());
-  writeFileSync(STORE_PATH, JSON.stringify({ users }, null, 2), 'utf8');
+  writeFileSync(storePath, JSON.stringify({ users }, null, 2), 'utf8');
 }
 
 function toPublic(u: AuthUser): UserProfile {
