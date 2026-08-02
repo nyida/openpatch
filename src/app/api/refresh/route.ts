@@ -1,3 +1,4 @@
+import { guardProApi } from '@/lib/auth/guardApi';
 import { spawn } from 'child_process';
 import path from 'path';
 import { whaleError, whaleJson } from '@/lib/whale/api';
@@ -11,7 +12,10 @@ const ENABLED =
 
 let running = false;
 
-export async function POST() {
+export async function POST(request: Request) {
+  const _denied = await guardProApi(request);
+  if (_denied) return _denied;
+
   if (!ENABLED) {
     return whaleJson({ error: 'Scraper refresh is disabled in this environment.' }, 403);
   }

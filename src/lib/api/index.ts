@@ -1,5 +1,5 @@
 /**
- * Algomarket external API clients — unified exports.
+ * Algomarket external API clients - unified exports.
  * @module lib/api
  */
 

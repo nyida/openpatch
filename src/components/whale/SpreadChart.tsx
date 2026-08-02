@@ -43,7 +43,7 @@ export const SpreadChart = memo(function SpreadChart({
   );
 
   if (chartData.length < 2) {
-    return <span className="opacity-30 text-[9px] font-mono">—</span>;
+    return <span className="opacity-30 text-[9px] font-mono">-</span>;
   }
 
   const last = chartData[chartData.length - 1]?.spread ?? 0;

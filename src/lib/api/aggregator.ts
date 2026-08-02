@@ -28,7 +28,7 @@ import type {
 
 const MARKET_CACHE_MS = 90_000;
 const CHANGES_CACHE_MS = 60_000;
-const CRYPTO_CACHE_MS = 60_000;
+const CRYPTO_CACHE_MS = 120_000;
 
 let marketCache: { at: number; data: AggregatedMarketsResponse } | null = null;
 let changesCache: { at: number; data: MarketChangesResponse } | null = null;

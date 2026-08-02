@@ -1,5 +1,5 @@
 /**
- * Dome API — real-time orderbooks from Polymarket and Kalshi.
+ * Dome API - real-time orderbooks from Polymarket and Kalshi.
  * Note: Dome was acquired by Polymarket; APIs reach end-of-life April 2026.
  * Requires free API key from domeapi.io.
  * @see https://docs.domeapi.io/

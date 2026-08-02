@@ -3,6 +3,7 @@ import { fetchTopPolymarket } from './polymarket.service';
 import { buildTitleIndex, findBestMatch, normalizeTitle } from './arbitrage.utils';
 import { getLastSeen, recordSpreadSnapshots } from './cacheService';
 import { calculateNetROI } from '@/utils/arbMath';
+import { resolveExternalUrl } from '@/lib/whale/marketUrls';
 import type { ArbitrageSpread } from './types';
 
 const ARB_CACHE_MS = 30_000;
@@ -21,6 +22,7 @@ function buildSpread(
   kalshiPrice: number,
   polyUrl: string,
   kalshiUrl: string,
+  kalshiTicker: string | null = null,
 ): ArbitrageSpread {
   const spread = polyPrice - kalshiPrice;
   const roi = calculateNetROI(kalshiPrice, polyPrice);
@@ -43,6 +45,7 @@ function buildSpread(
     direction: roi.direction,
     poly_url: polyUrl,
     kalshi_url: kalshiUrl,
+    kalshi_ticker: kalshiTicker,
     first_seen_at: seen?.first_seen_at ?? now,
     last_seen_at: seen?.last_seen_at ?? now,
   };
@@ -73,13 +76,19 @@ async function computeArbitragePairs(minSpread: number): Promise<{
     const bestKalshi = match.item;
     if (poly.probability <= 0 && bestKalshi.probability <= 0) continue;
 
+    const kalshiTicker = bestKalshi.id.startsWith('kalshi-')
+      ? bestKalshi.id.slice('kalshi-'.length)
+      : null;
     const spread = buildSpread(
       poly.title,
       bestKalshi.title,
       poly.probability,
       bestKalshi.probability,
       poly.external_url,
-      bestKalshi.external_url,
+      resolveExternalUrl('kalshi', bestKalshi.title, bestKalshi.external_url, {
+        ticker: kalshiTicker,
+      }),
+      kalshiTicker,
     );
     if (Math.abs(spread.spread) >= minSpread) {
       pairs.push(spread);

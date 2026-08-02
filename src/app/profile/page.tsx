@@ -166,7 +166,7 @@ function ProfileContent() {
     <Shell>
       <PageHeader
         title="Whale profile"
-        description="Individual wallet analytics — positions, trade history, P&L, and on-chain activity on Polymarket."
+        description="Individual wallet analytics - positions, trade history, P&L, and on-chain activity on Polymarket."
       />
 
       <div className="profile-layout">
@@ -196,7 +196,7 @@ function ProfileContent() {
               <div className="profile-header surface">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <h2 className="font-serif text-xl font-semibold tracking-tight">
+                    <h2 className="font-sans text-xl font-bold tracking-tight">
                       {stats.display_name || shortWallet(selected)}
                     </h2>
                     <p className="font-mono text-[11px] mt-1 opacity-60">{selected}</p>
@@ -225,7 +225,7 @@ function ProfileContent() {
                 <StatPill label="Win rate" value={`${Math.round(stats.win_rate * 100)}%`} />
                 <StatPill
                   label="Smart money score"
-                  value={score != null ? score.toFixed(2) : '—'}
+                  value={score != null ? score.toFixed(2) : '-'}
                   accent="mint"
                 />
                 <StatPill label="Biggest win" value={fmtUsd(stats.biggest_win)} />

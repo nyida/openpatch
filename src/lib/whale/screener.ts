@@ -35,32 +35,25 @@ export type ScreenerFilters = {
   offset: number;
 };
 
-type Cache = {
+export type ScreenerCatalog = {
   at: number;
   polymarket: ScreenerRow[];
   kalshi: ScreenerRow[];
   manifold: ScreenerRow[];
-  predscope: ScreenerRow[];
+  extras: ScreenerRow[];
 };
 
-const CACHE_MS = 90_000;
-const POLY_MAX = 800;
-const KALSHI_MAX_PAGES = 3;
-let cache: Cache | null = null;
-let refreshPromise: Promise<Cache> | null = null;
+import { getArbitragePairs } from '@/services/arbitrage.service';
+import { titleSimilarity } from '@/services/arbitrage.utils';
+import { kalshiExternalUrl, kalshiSeriesTicker } from '@/lib/whale/marketUrls';
+import { warmKalshiSeriesTitles, getCachedKalshiSeriesTitle } from '@/lib/whale/kalshiSeries';
 
-async function mapConcurrent<T, R>(
-  items: T[],
-  concurrency: number,
-  fn: (item: T) => Promise<R>,
-): Promise<R[]> {
-  const results: R[] = [];
-  for (let i = 0; i < items.length; i += concurrency) {
-    const batch = items.slice(i, i + concurrency);
-    results.push(...(await Promise.all(batch.map(fn))));
-  }
-  return results;
-}
+const CACHE_MS = 120_000;
+const KALSHI_MAX_PAGES = 1;
+
+let cache: ScreenerCatalog | null = null;
+let refreshPromise: Promise<ScreenerCatalog> | null = null;
+let extrasPromise: Promise<void> | null = null;
 
 function parseNum(v: unknown): number {
   const n = typeof v === 'string' ? parseFloat(v) : Number(v);
@@ -75,80 +68,14 @@ function daysUntil(iso: string | null | undefined): number | null {
 }
 
 async function fetchJson<T>(url: string): Promise<T> {
-  const res = await fetch(url, { cache: 'no-store' });
+  const res = await fetch(url, { next: { revalidate: 120 } });
   if (!res.ok) throw new Error(`Fetch failed ${res.status}: ${url}`);
   return res.json() as Promise<T>;
 }
 
-async function fetchPolymarketPage(offset: number) {
-  const url = `https://gamma-api.polymarket.com/markets?active=true&closed=false&limit=100&offset=${offset}&order=volume24hr&ascending=false`;
-  return fetchJson<
-    {
-      question?: string;
-      slug?: string;
-      outcomePrices?: string;
-      volume?: string;
-      volume24hr?: number;
-      endDate?: string;
-      active?: boolean;
-      closed?: boolean;
-      oneDayPriceChange?: number;
-      events?: { title?: string; slug?: string; series?: { title?: string }[] }[];
-      groupItemTitle?: string;
-    }[]
-  >(url);
-}
-
-function marketToRow(m: Awaited<ReturnType<typeof fetchPolymarketPage>>[number]): ScreenerRow {
-  let prob = 0.5;
-  try {
-    const prices = JSON.parse(m.outcomePrices ?? '["0.5"]') as string[];
-    prob = parseFloat(prices[0]) || 0.5;
-  } catch {
-    /* default */
-  }
-  const change = m.oneDayPriceChange ?? null;
-  const open = change != null ? prob - change : null;
-  const eventTitle =
-    m.groupItemTitle ??
-    m.events?.[0]?.series?.[0]?.title ??
-    (m.events?.[0]?.title !== m.question ? m.events?.[0]?.title : null) ??
-    null;
-  const vol = parseNum(m.volume);
-  const vol24 = m.volume24hr ?? null;
-  return {
-    platform: 'polymarket',
-    market_title: m.question ?? 'Unknown',
-    event_title: eventTitle,
-    probability: prob,
-    price_open: open,
-    price_high: change != null ? Math.max(prob, open ?? prob) : null,
-    price_low: change != null ? Math.min(prob, open ?? prob) : null,
-    change_1d: change,
-    volume: vol,
-    volume_24h: vol24,
-    days_to_resolution: daysUntil(m.endDate),
-    status: m.closed ? 'closed' : m.active ? 'active' : 'unknown',
-    external_url: polymarketExternalUrl(m),
-  };
-}
-
-async function fetchPolymarket(): Promise<ScreenerRow[]> {
-  const offsets: number[] = [];
-  for (let offset = 0; offset < POLY_MAX; offset += 100) offsets.push(offset);
-
-  const pages = await mapConcurrent(offsets, 5, fetchPolymarketPage);
-  const rows: ScreenerRow[] = [];
-  for (const markets of pages) {
-    if (!markets.length) break;
-    for (const m of markets) rows.push(marketToRow(m));
-    if (markets.length < 100) break;
-  }
-  return rows;
-}
-
 type KalshiMarket = {
   ticker?: string;
+  event_ticker?: string;
   title?: string;
   yes_sub_title?: string;
   subtitle?: string;
@@ -159,7 +86,6 @@ type KalshiMarket = {
   close_time?: string;
   latest_expiration_time?: string;
   status?: string;
-  event_ticker?: string;
 };
 
 async function fetchKalshi(): Promise<ScreenerRow[]> {
@@ -180,6 +106,10 @@ async function fetchKalshi(): Promise<ScreenerRow[]> {
     if (!cursor || (data.markets?.length ?? 0) < 1000) break;
   }
 
+  await warmKalshiSeriesTitles(
+    all.map((m) => kalshiSeriesTicker(m.ticker, m.event_ticker)).filter((s): s is string => Boolean(s)),
+  );
+
   const rows: ScreenerRow[] = [];
   for (const m of all) {
     const last = parseNum(m.last_price_dollars);
@@ -189,6 +119,7 @@ async function fetchKalshi(): Promise<ScreenerRow[]> {
 
     const eventTitle = m.yes_sub_title ?? m.subtitle ?? null;
     const change = prev > 0 || last > 0 ? last - prev : null;
+    const series = kalshiSeriesTicker(m.ticker, m.event_ticker);
     rows.push({
       platform: 'kalshi',
       market_title: m.title ?? m.ticker ?? 'Unknown',
@@ -202,27 +133,33 @@ async function fetchKalshi(): Promise<ScreenerRow[]> {
       volume_24h: parseNum(m.volume_24h_fp) || null,
       days_to_resolution: daysUntil(m.close_time ?? m.latest_expiration_time),
       status: m.status ?? 'active',
-      external_url: kalshiExternalUrl(m.ticker, m.title),
+      external_url: kalshiExternalUrl({
+        ticker: m.ticker,
+        eventTicker: m.event_ticker,
+        seriesTicker: series,
+        seriesTitle: series ? getCachedKalshiSeriesTitle(series) : null,
+        title: m.title,
+      }),
     });
   }
 
   return rows.sort((a, b) => b.volume - a.volume);
 }
 
-async function refreshCatalog(): Promise<Cache> {
-  const { fetchPredScopeMarkets } = await import('@/lib/api/clients/predscope');
-  const { fetchManifoldMarkets } = await import('@/lib/api/clients/manifold');
-  const { fetchMetaculusQuestions } = await import('@/lib/api/clients/metaculus');
-
-  const [polymarket, kalshi, predscopeRaw, manifoldRaw, metaculusRaw] = await Promise.all([
-    fetchPolymarket().catch(() => [] as ScreenerRow[]),
-    fetchKalshi().catch(() => [] as ScreenerRow[]),
-    fetchPredScopeMarkets().catch(() => []),
-    fetchManifoldMarkets(40).catch(() => []),
-    fetchMetaculusQuestions(20).catch(() => []),
-  ]);
-
-  const predscope: ScreenerRow[] = predscopeRaw.map((m) => ({
+function predscopeToRows(
+  markets: {
+    title: string;
+    event_title: string | null;
+    probability: number;
+    volume: number;
+    volume_24h: number | null;
+    change_1d?: number | null;
+    status: string;
+    external_url: string;
+    source?: string;
+  }[],
+): ScreenerRow[] {
+  return markets.map((m) => ({
     platform: 'polymarket' as const,
     market_title: m.title,
     event_title: m.event_title,
@@ -236,10 +173,50 @@ async function refreshCatalog(): Promise<Cache> {
     days_to_resolution: null,
     status: m.status,
     external_url: m.external_url,
-    source: 'predscope',
+    source: m.source ?? 'predscope',
   }));
+}
 
-  const manifold: ScreenerRow[] = manifoldRaw.map((m) => ({
+/** Fast core catalog: PredScope (1 req) + Kalshi page (1 req). */
+async function refreshCoreCatalog(): Promise<ScreenerCatalog> {
+  const { fetchPredScopeMarkets } = await import('@/lib/api/clients/predscope');
+
+  const [predscopeRaw, kalshi] = await Promise.all([
+    fetchPredScopeMarkets().catch(() => []),
+    fetchKalshi().catch(() => [] as ScreenerRow[]),
+  ]);
+
+  const polymarket = predscopeToRows(
+    predscopeRaw.map((m) => ({
+      title: m.title,
+      event_title: m.event_title,
+      probability: m.probability,
+      volume: m.volume,
+      volume_24h: m.volume_24h,
+      change_1d: m.change_1d,
+      status: m.status,
+      external_url: m.external_url,
+      source: 'predscope',
+    })),
+  );
+
+  cache = { at: Date.now(), polymarket, kalshi, manifold: [], extras: [] };
+  return cache;
+}
+
+/** Secondary sources loaded in background - not on critical path. */
+async function refreshExtras(): Promise<void> {
+  const { fetchManifoldMarkets } = await import('@/lib/api/clients/manifold');
+  const { fetchMetaculusQuestions } = await import('@/lib/api/clients/metaculus');
+
+  const [manifoldRaw, metaculusRaw] = await Promise.all([
+    fetchManifoldMarkets(25).catch(() => []),
+    fetchMetaculusQuestions(15).catch(() => []),
+  ]);
+
+  if (!cache) return;
+
+  cache.manifold = manifoldRaw.map((m) => ({
     platform: 'manifold' as const,
     market_title: m.title,
     event_title: m.event_title,
@@ -256,7 +233,7 @@ async function refreshCatalog(): Promise<Cache> {
     source: 'manifold',
   }));
 
-  const metaculus: ScreenerRow[] = metaculusRaw.map((m) => ({
+  cache.extras = metaculusRaw.map((m) => ({
     platform: 'metaculus' as const,
     market_title: m.title,
     event_title: m.event_title,
@@ -272,25 +249,39 @@ async function refreshCatalog(): Promise<Cache> {
     external_url: m.external_url,
     source: 'metaculus',
   }));
-
-  cache = { at: Date.now(), polymarket, kalshi, manifold, predscope: [...predscope, ...metaculus] };
-  return cache;
+  cache.at = Date.now();
 }
 
-async function loadCatalog(): Promise<Cache> {
-  if (cache && Date.now() - cache.at < CACHE_MS) return cache;
+function scheduleExtrasRefresh(): void {
+  if (extrasPromise) return;
+  extrasPromise = refreshExtras().finally(() => {
+    extrasPromise = null;
+  });
+}
 
-  // Stale-while-revalidate: serve cached catalog while refreshing in background.
+export async function loadScreenerCatalog(): Promise<ScreenerCatalog> {
+  if (cache && Date.now() - cache.at < CACHE_MS) {
+    scheduleExtrasRefresh();
+    return cache;
+  }
+
   if (cache) {
     if (!refreshPromise) {
-      refreshPromise = refreshCatalog().finally(() => {
-        refreshPromise = null;
-      });
+      refreshPromise = refreshCoreCatalog()
+        .then((c) => {
+          scheduleExtrasRefresh();
+          return c;
+        })
+        .finally(() => {
+          refreshPromise = null;
+        });
     }
     return cache;
   }
 
-  return refreshCatalog();
+  const core = await refreshCoreCatalog();
+  scheduleExtrasRefresh();
+  return core;
 }
 
 export function filterScreener(rows: ScreenerRow[], f: ScreenerFilters): ScreenerRow[] {
@@ -318,10 +309,6 @@ export function filterScreener(rows: ScreenerRow[], f: ScreenerFilters): Screene
   });
 }
 
-import { getArbitragePairs } from '@/services/arbitrage.service';
-import { titleSimilarity } from '@/services/arbitrage.utils';
-import { kalshiExternalUrl, polymarketExternalUrl } from '@/lib/whale/marketUrls';
-
 function filterMatchedRows(rows: ScreenerRow[], matchedTitles: { poly: string; kalshi: string }[]): ScreenerRow[] {
   if (!matchedTitles.length) return [];
   return rows.filter((r) => {
@@ -333,13 +320,23 @@ function filterMatchedRows(rows: ScreenerRow[], matchedTitles: { poly: string; k
   });
 }
 
+function buildFacets(catalog: ScreenerCatalog, combined: ScreenerRow[]): ScreenerFacets {
+  return {
+    total: combined.length,
+    polymarket: catalog.polymarket.length,
+    kalshi: catalog.kalshi.length,
+    manifold: catalog.manifold.length,
+    metaculus: catalog.extras.length,
+  };
+}
+
 export async function getScreenerData(filters: ScreenerFilters) {
-  const catalog = await loadCatalog();
+  const catalog = await loadScreenerCatalog();
   let combined = [
     ...catalog.polymarket,
     ...catalog.kalshi,
     ...catalog.manifold,
-    ...catalog.predscope,
+    ...catalog.extras,
   ];
 
   if (filters.matched_only) {
@@ -351,13 +348,7 @@ export async function getScreenerData(filters: ScreenerFilters) {
   const filtered = filterScreener(combined, filters);
   filtered.sort((a, b) => (b.volume_24h ?? b.volume) - (a.volume_24h ?? a.volume));
 
-  const facets: ScreenerFacets = {
-    total: combined.length,
-    polymarket: catalog.polymarket.length + catalog.predscope.filter((r) => r.source === 'predscope').length,
-    kalshi: catalog.kalshi.length,
-    manifold: catalog.manifold.length,
-    metaculus: catalog.predscope.filter((r) => r.source === 'metaculus').length,
-  };
+  const facets = buildFacets(catalog, combined);
 
   return {
     rows: filtered.slice(filters.offset, filters.offset + filters.limit),

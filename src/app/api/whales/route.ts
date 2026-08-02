@@ -1,9 +1,13 @@
+import { guardProApi } from '@/lib/auth/guardApi';
 import { NextRequest } from 'next/server';
 import { getTraders } from '@/lib/whale/queries';
 import { checkApiKey, apiUnauthorized } from '@/lib/apiAuth';
 import { whaleError, whaleJson } from '@/lib/whale/api';
 
 export async function GET(req: NextRequest) {
+  const _denied = await guardProApi(req);
+  if (_denied) return _denied;
+
   if (!checkApiKey(req)) return apiUnauthorized();
 
   const sp = req.nextUrl.searchParams;

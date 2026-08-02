@@ -109,7 +109,7 @@ export function PaperTradeModal({
         )}
 
         <button type="button" className="btn btn-primary w-full text-xs" onClick={submit}>
-          {buyLabel} — {fmtUsd(sizeUsd)}
+          {buyLabel} - {fmtUsd(sizeUsd)}
         </button>
       </div>
     </div>

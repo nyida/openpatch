@@ -23,7 +23,7 @@ export function DualBar({ yesPct }: { yesPct: number }) {
 export function edgeFromPct(marketPct: number, whalePct: number) {
   const delta = whalePct - marketPct;
   const abs = Math.abs(delta);
-  if (abs < 0.5) return { delta, label: '—', cls: 'neutral' as const };
+  if (abs < 0.5) return { delta, label: '-', cls: 'neutral' as const };
   const sign = delta > 0 ? '+' : '−';
   return {
     delta,

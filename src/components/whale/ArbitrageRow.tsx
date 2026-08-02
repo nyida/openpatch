@@ -3,7 +3,7 @@
 import type { ArbitrageSpread } from '@/services/types';
 import { NetROIBadge } from '@/components/whale/NetROIBadge';
 import { marketDetailPath } from '@/lib/whale/marketRoutes';
-import { platformExternalUrl } from '@/lib/whale/marketUrls';
+import { platformExternalUrl, resolveExternalUrl } from '@/lib/whale/marketUrls';
 import { formatNetROI, netROITooltip } from '@/utils/arbMath';
 
 export function NetProfitCell({ spread }: { spread: ArbitrageSpread }) {
@@ -63,7 +63,7 @@ export function ArbitrageRow({ spread }: { spread: ArbitrageSpread }) {
           Poly
         </a>
         <a
-          href={spread.kalshi_url || platformExternalUrl('kalshi', { title: spread.kalshi_title })}
+          href={resolveExternalUrl('kalshi', spread.kalshi_title, spread.kalshi_url)}
           target="_blank"
           rel="noreferrer"
           className="btn btn-ghost text-[10px] !py-0.5"

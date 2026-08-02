@@ -1,10 +1,13 @@
 'use client';
 
+import { motion, useReducedMotion } from 'framer-motion';
 import { useMarketChanges } from '@/lib/whale/dataSourceHooks';
 import { MarketTitleLink } from '@/components/whale/MarketTitleLink';
+import { DUR, EASE_OUT, fadeUp, staggerContainer, staggerItem } from '@/lib/motion';
 
 export function TopMoversPanel({ since = '1h', limit = 8 }: { since?: string; limit?: number }) {
   const { data, isLoading } = useMarketChanges(since);
+  const reduced = useReducedMotion();
 
   const movers = (data?.changes ?? [])
     .filter((c) => c.type === 'price_move' && c.change_pct != null)
@@ -29,16 +32,30 @@ export function TopMoversPanel({ since = '1h', limit = 8 }: { since?: string; li
   if (!movers.length) return null;
 
   return (
-    <div className="surface p-4 mb-4">
+    <motion.div
+      className="surface p-4 mb-4"
+      initial={reduced ? false : fadeUp.initial}
+      animate={fadeUp.animate}
+      transition={{ duration: reduced ? 0 : DUR.base, ease: EASE_OUT, delay: reduced ? 0 : 0.05 }}
+    >
       <p className="text-[10px] uppercase tracking-wider mb-3" style={{ color: 'var(--text-3)' }}>
         Top movers ({since})
       </p>
-      <div className="space-y-1.5">
+      <motion.div
+        className="space-y-1.5"
+        initial={reduced ? false : 'hidden'}
+        animate="visible"
+        variants={reduced ? undefined : staggerContainer}
+      >
         {movers.map((m, i) => {
           const change = m.change_pct ?? 0;
           const up = change >= 0;
           return (
-            <div key={`${m.platform}-${m.title}-${i}`} className="top-mover-row">
+            <motion.div
+              key={`${m.platform}-${m.title}-${i}`}
+              className="top-mover-row"
+              variants={reduced ? undefined : staggerItem}
+            >
               <MarketTitleLink
                 title={m.title}
                 platform={m.platform}
@@ -51,10 +68,10 @@ export function TopMoversPanel({ since = '1h', limit = 8 }: { since?: string; li
                 {up ? '+' : ''}
                 {change.toFixed(1)}%
               </span>
-            </div>
+            </motion.div>
           );
         })}
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }

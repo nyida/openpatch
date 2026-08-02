@@ -1,5 +1,5 @@
 /**
- * GoldRush API — Hyperliquid ecosystem data.
+ * GoldRush API - Hyperliquid ecosystem data.
  * Free credits for early builders. Requires API key.
  * @see https://goldrush.dev
  */

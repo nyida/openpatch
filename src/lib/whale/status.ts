@@ -140,20 +140,21 @@ function metaInt(db: ReturnType<typeof getDb>, key: string): number | null {
 
 export function getScrapeStatus(): ScrapeStatus {
   const db = getDb();
+  // Prefer metadata aggressively - full scans on the trades table freeze the server.
   const countsSyncedAt = metaInt(db, 'counts_synced_at');
-  const countsFresh = countsSyncedAt != null && Date.now() / 1000 - countsSyncedAt < 1800;
+  const countsFresh = countsSyncedAt != null && Date.now() / 1000 - countsSyncedAt < 6 * 3600;
 
   const trader_count =
-    (countsFresh ? metaInt(db, 'trader_count') : null) ??
+    metaInt(db, 'trader_count') ??
     liveCount(db, 'SELECT COUNT(*) AS c FROM traders');
   const position_count =
-    (countsFresh ? metaInt(db, 'position_count') : null) ??
+    metaInt(db, 'position_count') ??
     liveCount(db, 'SELECT COUNT(*) AS c FROM positions');
   const market_count =
-    (countsFresh ? metaInt(db, 'market_count') : null) ??
+    metaInt(db, 'market_count') ??
     liveCount(db, 'SELECT COUNT(DISTINCT market_title) AS c FROM positions');
   const contract_count =
-    (countsFresh ? metaInt(db, 'contract_count') : null) ??
+    metaInt(db, 'contract_count') ??
     liveCount(
       db,
       `SELECT COUNT(*) AS c FROM (
@@ -165,11 +166,10 @@ export function getScrapeStatus(): ScrapeStatus {
 
   const scrapeStatusRaw = metaValue(db, 'scrape_status');
   const whaleTargetMeta = parseInt(metaValue(db, 'whale_target') ?? '0', 10);
-  const whaleTargetDb = liveCount(
-    db,
-    'SELECT COUNT(*) AS c FROM all_traders WHERE alltime_profit >= 10000',
-  );
-  const whaleTarget = whaleTargetMeta || whaleTargetDb || 250;
+  const whaleTarget =
+    whaleTargetMeta ||
+    metaInt(db, 'all_trader_count') ||
+    250;
   const scrape_in_progress =
     scrapeStatusRaw === 'in_progress' ||
     (trader_count > 0 && whaleTarget > 0 && trader_count < whaleTarget);
@@ -178,15 +178,20 @@ export function getScrapeStatus(): ScrapeStatus {
   const lastScrapeRaw = metaValue(db, 'last_scrape_at');
   let last_scrape_at = lastScrapeRaw ? parseInt(lastScrapeRaw, 10) : null;
 
-  let latest_trade_at: number | null = null;
-  try {
-    const row = db.prepare('SELECT MAX(timestamp) AS ts FROM trades').get() as { ts: number | null };
-    latest_trade_at = row?.ts ?? null;
-    if (!last_scrape_at && latest_trade_at) {
-      last_scrape_at = latest_trade_at;
+  let latest_trade_at = metaInt(db, 'latest_trade_at');
+  if (latest_trade_at == null) {
+    try {
+      // Indexed DESC seek - avoid SELECT MAX() full scan on huge trades tables.
+      const row = db
+        .prepare('SELECT timestamp AS ts FROM trades ORDER BY timestamp DESC LIMIT 1')
+        .get() as { ts: number | null } | undefined;
+      latest_trade_at = row?.ts ?? null;
+    } catch {
+      latest_trade_at = null;
     }
-  } catch {
-    /* no trades table */
+  }
+  if (!last_scrape_at && latest_trade_at) {
+    last_scrape_at = latest_trade_at;
   }
 
   const ageMinutes = last_scrape_at
@@ -201,13 +206,10 @@ export function getScrapeStatus(): ScrapeStatus {
     : Number.POSITIVE_INFINITY;
   const live_feed_fresh = liveAgeMinutes <= 5;
 
-  let live_trade_count =
-    (countsFresh ? metaInt(db, 'live_trade_count') : null) ?? 0;
-  let live_polymarket_trades =
-    (countsFresh ? metaInt(db, 'live_polymarket_trades') : null) ?? 0;
-  let live_kalshi_trades =
-    (countsFresh ? metaInt(db, 'live_kalshi_trades') : null) ?? 0;
-  if (!countsFresh) {
+  let live_trade_count = metaInt(db, 'live_trade_count') ?? 0;
+  let live_polymarket_trades = metaInt(db, 'live_polymarket_trades') ?? 0;
+  let live_kalshi_trades = metaInt(db, 'live_kalshi_trades') ?? 0;
+  if (!countsFresh && live_trade_count === 0) {
     try {
       const liveRows = db
         .prepare(`
@@ -230,7 +232,7 @@ export function getScrapeStatus(): ScrapeStatus {
     }
   }
   const all_trader_count =
-    (countsFresh ? metaInt(db, 'all_trader_count') : null) ??
+    metaInt(db, 'all_trader_count') ??
     liveCount(db, 'SELECT COUNT(*) AS c FROM all_traders');
 
   let platforms: string[];
@@ -239,10 +241,10 @@ export function getScrapeStatus(): ScrapeStatus {
     try {
       platforms = JSON.parse(platformsJson) as string[];
     } catch {
-      platforms = getAvailablePlatforms();
+      platforms = ['kalshi', 'polymarket'];
     }
   } else {
-    platforms = getAvailablePlatforms();
+    platforms = ['kalshi', 'polymarket'];
   }
 
   return {

@@ -135,11 +135,11 @@ export default function LivePage() {
         />
         <StatPill
           label="Polymarket"
-          value={status ? status.live_polymarket_trades.toLocaleString() : '—'}
+          value={status ? status.live_polymarket_trades.toLocaleString() : '-'}
         />
         <StatPill
           label="Kalshi"
-          value={status ? status.live_kalshi_trades.toLocaleString() : '—'}
+          value={status ? status.live_kalshi_trades.toLocaleString() : '-'}
           accent={status?.live_feed_fresh ? 'mint' : undefined}
         />
         <StatPill label="Cumulative vol" value={fmtUsd(cumulativeVolume)} accent="mint" />

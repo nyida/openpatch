@@ -9,7 +9,7 @@ function expandHome(p: string): string {
   return p;
 }
 
-/** Resolve whale_data.db — checks env, scraper dir, project root, and common defaults. */
+/** Resolve whale_data.db - checks env, scraper dir, project root, and common defaults. */
 export function resolveDbPath(): string {
   if (process.env.WHALE_DB_PATH) {
     return path.resolve(expandHome(process.env.WHALE_DB_PATH));
@@ -84,8 +84,14 @@ export function getDb(): Database.Database {
   }
   if (!db) {
     migrateOnce();
-    db = new Database(DB_PATH, { readonly: true, fileMustExist: true, timeout: 60000 });
-    db.pragma('busy_timeout = 60000');
+    db = new Database(DB_PATH, { readonly: true, fileMustExist: true, timeout: 5000 });
+    db.pragma('busy_timeout = 5000');
+    db.pragma('query_only = ON');
+    try {
+      db.pragma('journal_mode = WAL');
+    } catch {
+      /* readonly attach may already be WAL */
+    }
   }
   return db;
 }

@@ -38,7 +38,7 @@ function toApiMarkets(m: PredScopeMarket): ApiMarket[] {
 
   return m.outcomes.map((o, i) => ({
     id: `predscope-${m.slug}-${i}`,
-    title: m.outcomes.length > 1 ? `${m.title} — ${o.title}` : m.title,
+    title: m.outcomes.length > 1 ? `${m.title} - ${o.title}` : m.title,
     event_title: m.outcomes.length > 1 ? m.title : null,
     platform: 'polymarket',
     source: 'predscope',

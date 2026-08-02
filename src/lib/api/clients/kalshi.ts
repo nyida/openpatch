@@ -1,11 +1,12 @@
 /**
  * Kalshi Trade API client.
- * Public market data endpoints — no API key required for reads.
+ * Public market data endpoints - no API key required for reads.
  * @see https://trading-api.readme.io/reference/getmarkets-1
  */
 
 import { inferMarketCategory } from '@/lib/whale/categories';
-import { kalshiExternalUrl } from '@/lib/whale/marketUrls';
+import { kalshiExternalUrl, kalshiSeriesTicker } from '@/lib/whale/marketUrls';
+import { warmKalshiSeriesTitles, getCachedKalshiSeriesTitle } from '@/lib/whale/kalshiSeries';
 import { apiFetch } from '../http';
 import type { ApiMarket } from '../types/api.types';
 
@@ -13,6 +14,7 @@ const BASE = process.env.KALSHI_API_URL ?? 'https://api.elections.kalshi.com/tra
 
 type KalshiMarket = {
   ticker?: string;
+  event_ticker?: string;
   title?: string;
   yes_sub_title?: string;
   subtitle?: string;
@@ -28,6 +30,7 @@ function toApiMarket(m: KalshiMarket): ApiMarket {
   const eventTitle = m.yes_sub_title ?? m.subtitle ?? null;
   const last = parseFloat(m.last_price_dollars ?? '0') || 0;
   const prev = parseFloat(m.previous_price_dollars ?? '0') || 0;
+  const series = kalshiSeriesTicker(m.ticker, m.event_ticker);
   return {
     id: `kalshi-${m.ticker ?? title}`,
     title,
@@ -39,10 +42,23 @@ function toApiMarket(m: KalshiMarket): ApiMarket {
     probability: last,
     category: inferMarketCategory(`${title} ${eventTitle ?? ''}`),
     image: null,
-    external_url: kalshiExternalUrl(m.ticker, m.title),
+    external_url: kalshiExternalUrl({
+      ticker: m.ticker,
+      eventTicker: m.event_ticker,
+      seriesTicker: series,
+      seriesTitle: series ? getCachedKalshiSeriesTitle(series) : null,
+      title: m.title,
+    }),
     status: m.status ?? 'active',
     change_1d: prev > 0 || last > 0 ? last - prev : null,
   };
+}
+
+async function mapWithSeries(markets: KalshiMarket[]): Promise<ApiMarket[]> {
+  await warmKalshiSeriesTitles(
+    markets.map((m) => kalshiSeriesTicker(m.ticker, m.event_ticker)).filter((s): s is string => Boolean(s)),
+  );
+  return markets.map(toApiMarket);
 }
 
 /** Search open Kalshi markets by keyword. */
@@ -53,7 +69,7 @@ export async function searchKalshiMarkets(q: string, limit = 30): Promise<ApiMar
     path: `/markets?status=open&limit=${Math.min(limit, 100)}&mve_filter=exclude&query=${encodeURIComponent(q)}`,
     rateLimitPerMinute: 100,
   });
-  return (data?.markets ?? []).map(toApiMarket);
+  return mapWithSeries(data?.markets ?? []);
 }
 
 /** Fetch top Kalshi markets by volume. */
@@ -78,8 +94,8 @@ export async function fetchKalshiMarkets(maxPages = 3): Promise<ApiMarket[]> {
     if (!cursor || (data.markets?.length ?? 0) < 1000) break;
   }
 
-  return all
-    .map(toApiMarket)
+  const mapped = await mapWithSeries(all);
+  return mapped
     .filter((m) => m.volume > 0 || m.probability > 0)
     .sort((a, b) => b.volume - a.volume);
 }

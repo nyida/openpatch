@@ -6,11 +6,11 @@ import { fetchJson } from './fetch';
 
 const DEFAULT_POLL_MS = 30_000;
 
-/** Single shared status query — dedupes Nav + DataFeedBar + page pollers. */
+/** Single shared status query - dedupes Nav + DataFeedBar + page pollers. */
 export function useScrapeStatus(pollMs = DEFAULT_POLL_MS) {
   const q = useQuery({
     queryKey: ['status'],
-    queryFn: () => fetchJson<ScrapeStatus>('/api/status', undefined, { retries: 3 }),
+    queryFn: () => fetchJson<ScrapeStatus>('/api/status', undefined, { timeoutMs: 8_000, retries: 2 }),
     refetchInterval: pollMs,
     staleTime: Math.max(pollMs - 5_000, 10_000),
     retry: 3,

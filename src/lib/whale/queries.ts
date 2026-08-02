@@ -27,20 +27,17 @@ export function getTraders(): TraderRow[] {
 
 export function getAllTraders(): TraderRow[] {
   const db = getDb();
+  // Keep this cheap - correlated scans against the multi-million-row trades table
+  // freeze the Node event loop and stall the whole dashboard.
   const rows = db
     .prepare(`
       SELECT
         a.wallet,
         a.display_name,
         a.alltime_profit,
-        (SELECT COUNT(*) FROM trades t WHERE t.wallet = a.wallet) AS trade_count,
-        (SELECT COUNT(*) FROM positions p WHERE p.wallet = a.wallet) AS position_count,
         (
-          SELECT CASE WHEN COUNT(*) > 0
-            THEN CAST(SUM(CASE WHEN realized_profit > 0 THEN 1 ELSE 0 END) AS REAL) / COUNT(*)
-            ELSE 0 END
-          FROM trades t WHERE t.wallet = a.wallet AND t.side = 'SELL'
-        ) AS win_rate
+          SELECT COUNT(*) FROM positions p WHERE p.wallet = a.wallet
+        ) AS position_count
       FROM all_traders a
       ORDER BY a.alltime_profit DESC
     `)
@@ -48,14 +45,13 @@ export function getAllTraders(): TraderRow[] {
     wallet: string;
     display_name: string;
     alltime_profit: number;
-    trade_count: number;
     position_count: number;
-    win_rate: number;
   }[];
   return rows.map((row, i) => ({
     ...row,
     rank: i + 1,
-    win_rate: Math.round((row.win_rate ?? 0) * 1000) / 10,
+    trade_count: 0,
+    win_rate: 0,
   }));
 }
 

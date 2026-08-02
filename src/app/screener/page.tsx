@@ -32,7 +32,7 @@ import type { ArbitrageSpread } from '@/services/types';
 import type { ScreenerFacets, ScreenerRow } from '@/lib/whale/screener';
 
 const PAGE_SIZE = 50;
-const POLL_MS = 90_000;
+const POLL_MS = 120_000;
 
 const PLATFORM_TABS = [
   { id: 'all', label: 'All' },
@@ -74,14 +74,14 @@ function fmtPct(n: number) {
 }
 
 function fmtOhl(r: ScreenerRow) {
-  const o = r.price_open != null ? fmtPct(r.price_open) : '—';
-  const h = r.price_high != null ? fmtPct(r.price_high) : '—';
-  const l = r.price_low != null ? fmtPct(r.price_low) : '—';
+  const o = r.price_open != null ? fmtPct(r.price_open) : '-';
+  const h = r.price_high != null ? fmtPct(r.price_high) : '-';
+  const l = r.price_low != null ? fmtPct(r.price_low) : '-';
   return `${o} / ${h} / ${l}`;
 }
 
 function fmtChange(c: number | null) {
-  if (c == null) return '—';
+  if (c == null) return '-';
   const pp = c * 100;
   const sign = pp >= 0 ? '+' : '';
   return `${sign}${pp.toFixed(1)}`;
@@ -120,7 +120,9 @@ function ScreenerContent() {
   const [arbsOnly, setArbsOnly] = useState(false);
   const [matchedOnly, setMatchedOnly] = useState(false);
 
-  const { data: arbData, isLoading: arbLoading } = useArbitrageMap(arbsOnly ? 0.02 : 0);
+  const { data: arbData, isLoading: arbLoading } = useArbitrageMap(arbsOnly ? 0.02 : 0, {
+    enabled: arbsOnly || matchedOnly,
+  });
   const arbPairs = arbData?.pairs ?? [];
 
   useEffect(() => {
@@ -196,7 +198,7 @@ function ScreenerContent() {
     <Shell>
       <PageHeader
         title="Market screener"
-        description="Filter prediction markets by probability, volume, and resolution date — Polymarket, Kalshi, Manifold, Metaculus"
+        description="Filter prediction markets by probability, volume, and resolution date - Polymarket, Kalshi, Manifold, Metaculus"
         action={lastFetch ? <LiveRefreshNote lastFetch={lastFetch} label="Catalog" /> : null}
       />
 
@@ -369,7 +371,7 @@ function ScreenerContent() {
                     </td>
                     <td className="text-right font-mono tabular-nums">{fmtUsd(r.volume)}</td>
                     <td className="text-right font-mono tabular-nums">
-                      {r.days_to_resolution ?? '—'}
+                      {r.days_to_resolution ?? '-'}
                     </td>
                     <td className="text-[10px] uppercase opacity-70">{r.status}</td>
                     <td className="text-right whitespace-nowrap">

@@ -4,10 +4,9 @@ import { usePathname } from 'next/navigation';
 import { SpreadHistoryRecorder } from '@/components/whale/SpreadHistoryRecorder';
 import { PriceStreamProvider } from '@/hooks/useWebSocket';
 
-/** Arb/WS infra only on pages that need live spread data — not every route. */
+/** Live WS only where spread charts matter - not the whale dashboard. */
 function needsLiveData(pathname: string): boolean {
   return (
-    pathname === '/' ||
     pathname.startsWith('/arbs') ||
     pathname.startsWith('/screener') ||
     pathname.startsWith('/market')

@@ -6,6 +6,7 @@ import { ContractCell } from '@/components/whale/PlatformTag';
 import { marketDetailPath } from '@/lib/whale/marketRoutes';
 import { fmtUsd } from '@/lib/whale/utils';
 import { usePoll } from '@/lib/whale/usePoll';
+import { authFetch } from '@/lib/auth/client';
 import {
   Shell,
   PageHeader,
@@ -37,7 +38,7 @@ export default function MarketsPage() {
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      const res = await fetch('/api/all_markets', { cache: 'no-store' });
+      const res = await authFetch('/api/all_markets', { cache: 'no-store' });
       if (res.ok) setMarkets(await res.json());
       else if (!silent) setMarkets([]);
     } catch {
@@ -71,8 +72,8 @@ export default function MarketsPage() {
       <PageHeader title="Exposure" description="Whale exposure by contract and venue" />
 
       <StatStrip>
-        <StatPill label="Markets" value={loading ? '—' : markets.length.toLocaleString()} />
-        <StatPill label="Total exposure" value={loading ? '—' : fmtUsd(totalExposure)} accent="mint" />
+        <StatPill label="Markets" value={loading ? '-' : markets.length.toLocaleString()} />
+        <StatPill label="Total exposure" value={loading ? '-' : fmtUsd(totalExposure)} accent="mint" />
       </StatStrip>
 
       <Toolbar>

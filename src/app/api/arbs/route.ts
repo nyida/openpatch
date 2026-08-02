@@ -1,9 +1,14 @@
+import { guardProApi } from '@/lib/auth/guardApi';
 import { NextRequest } from 'next/server';
 import { getArbitragePairs } from '@/services/arbitrage.service';
 import { checkApiKey, apiUnauthorized } from '@/lib/apiAuth';
 import { whaleError, whaleJson } from '@/lib/whale/api';
+import { resolveExternalUrl } from '@/lib/whale/marketUrls';
 
 export async function GET(req: NextRequest) {
+  const _denied = await guardProApi(req);
+  if (_denied) return _denied;
+
   if (!checkApiKey(req)) return apiUnauthorized();
 
   const sp = req.nextUrl.searchParams;
@@ -26,7 +31,7 @@ export async function GET(req: NextRequest) {
       tier: p.roi.tier,
       last_seen_at: p.last_seen_at,
       poly_url: p.poly_url,
-      kalshi_url: p.kalshi_url,
+      kalshi_url: resolveExternalUrl('kalshi', p.kalshi_title, p.kalshi_url),
     }));
 
     return whaleJson({

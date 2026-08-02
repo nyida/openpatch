@@ -51,7 +51,7 @@ export function formatNetProfitCents(r: NetROIResult): string {
   return `${sign}${r.netCents.toFixed(1)}¢`;
 }
 
-/** @deprecated Use formatNetProfitCents — ROI percentage removed from UI */
+/** @deprecated Use formatNetProfitCents - ROI percentage removed from UI */
 export function formatNetROI(r: NetROIResult): string {
   return formatNetProfitCents(r);
 }

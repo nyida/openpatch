@@ -2,8 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Bell } from 'lucide-react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { useLiveWhales } from '@/lib/whale/hooks';
 import { fmtRelativeTime, fmtUsd, platformShort } from '@/lib/whale/utils';
+import { DUR, EASE_OUT, fadeUp } from '@/lib/motion';
 
 const WHALE_ALERT_USD = 10_000;
 
@@ -11,6 +13,7 @@ export function WhaleTicker() {
   const { data, isLoading, isError } = useLiveWhales(500, 100);
   const [flash, setFlash] = useState(false);
   const prevMaxRef = useRef(0);
+  const reduced = useReducedMotion();
 
   const trades = data?.trades ?? [];
   const maxTrade = useMemo(
@@ -31,7 +34,13 @@ export function WhaleTicker() {
   if (isError) return null;
 
   return (
-    <section className="whale-ticker surface mt-4" aria-label="Live whale trades">
+    <motion.section
+      className="whale-ticker surface mt-4"
+      aria-label="Live whale trades"
+      initial={reduced ? false : fadeUp.initial}
+      animate={fadeUp.animate}
+      transition={{ duration: reduced ? 0 : DUR.slow, ease: EASE_OUT, delay: reduced ? 0 : 0.1 }}
+    >
       <div className="whale-ticker-header">
         <div className="flex items-center gap-2">
           <span className="text-[10px] uppercase tracking-wider opacity-60">Live whale feed</span>
@@ -75,6 +84,6 @@ export function WhaleTicker() {
           </div>
         )}
       </div>
-    </section>
+    </motion.section>
   );
 }

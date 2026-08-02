@@ -15,6 +15,7 @@ import { traderProfilePath } from '@/lib/whale/traderRoutes';
 import { platformExternalUrl } from '@/lib/whale/marketUrls';
 import type { ArbitrageSpread } from '@/services/types';
 import { fmtUsd, isPastMarket, shortWallet } from '@/lib/whale/utils';
+import { authFetch } from '@/lib/auth/client';
 
 export type DashboardMarket = {
   name: string;
@@ -96,7 +97,7 @@ export const MarketRow = memo(function MarketRow({
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(
+      const res = await authFetch(
         `/api/market_traders?market=${encodeURIComponent(cleanName)}&platform=${encodeURIComponent(market.platform)}`,
       );
       const json = await res.json();
@@ -182,8 +183,9 @@ export const MarketRow = memo(function MarketRow({
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: 'auto', opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.32, ease: [0.32, 0.72, 0, 1] }}
+                transition={{ duration: 0.28, ease: [0.32, 0.72, 0, 1] }}
                 className="expand-panel"
+                style={{ overflow: 'hidden' }}
               >
                 <div className="expand-inner">
                   {loading && <div className="shimmer h-7 w-full" />}

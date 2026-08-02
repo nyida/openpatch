@@ -1,3 +1,5 @@
+import { getToken } from '@/lib/auth/client';
+
 export type FetchJsonOptions = {
   timeoutMs?: number;
   retries?: number;
@@ -15,7 +17,17 @@ export async function fetchJson<T>(
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
-      const res = await fetch(url, { ...init, signal: controller.signal, cache: 'no-store' });
+      const headers = new Headers(init?.headers);
+      const token = getToken();
+      if (token && !headers.has('Authorization')) {
+        headers.set('Authorization', `Bearer ${token}`);
+      }
+      const res = await fetch(url, {
+        ...init,
+        headers,
+        signal: controller.signal,
+        cache: 'no-store',
+      });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         const msg = (body as { error?: string }).error ?? `Request failed (${res.status})`;
@@ -24,7 +36,7 @@ export async function fetchJson<T>(
       return (await res.json()) as T;
     } catch (e) {
       if (e instanceof Error && e.name === 'AbortError') {
-        lastError = new Error('Request timed out — try refreshing the page');
+        lastError = new Error('Request timed out - try refreshing the page');
       } else {
         lastError = e instanceof Error ? e : new Error(String(e));
       }

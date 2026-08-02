@@ -1,24 +1,26 @@
 'use client';
 
-import { motion } from 'framer-motion';
-
-const ease = [0.22, 1, 0.36, 1] as const;
+import { motion, useReducedMotion } from 'framer-motion';
+import type { ReactNode } from 'react';
+import { DUR, EASE_OUT, fadeUp, staggerContainer, staggerItem } from '@/lib/motion';
 
 export function PageMotion({
   children,
   className,
   delay = 0,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
   className?: string;
   delay?: number;
 }) {
+  const reduced = useReducedMotion();
+
   return (
     <motion.div
       className={className}
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, ease, delay }}
+      initial={reduced ? false : fadeUp.initial}
+      animate={fadeUp.animate}
+      transition={{ duration: reduced ? 0 : DUR.slow, ease: EASE_OUT, delay: reduced ? 0 : delay }}
     >
       {children}
     </motion.div>
@@ -29,18 +31,17 @@ export function Stagger({
   children,
   className,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
   className?: string;
 }) {
+  const reduced = useReducedMotion();
+
   return (
     <motion.div
       className={className}
-      initial="hidden"
+      initial={reduced ? false : 'hidden'}
       animate="visible"
-      variants={{
-        hidden: {},
-        visible: { transition: { staggerChildren: 0.06, delayChildren: 0.08 } },
-      }}
+      variants={reduced ? undefined : staggerContainer}
     >
       {children}
     </motion.div>
@@ -51,17 +52,13 @@ export function StaggerItem({
   children,
   className,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
   className?: string;
 }) {
+  const reduced = useReducedMotion();
+
   return (
-    <motion.div
-      className={className}
-      variants={{
-        hidden: { opacity: 0, y: 12 },
-        visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease } },
-      }}
-    >
+    <motion.div className={className} variants={reduced ? undefined : staggerItem}>
       {children}
     </motion.div>
   );

@@ -20,7 +20,7 @@ import { DataSourcesBanner } from '@/components/whale/DataSourcesBanner';
 import { LiveRefreshNote } from '@/components/whale/LiveRefreshNote';
 import { useArbitrageMap } from '@/lib/whale/hooks';
 import { marketDetailPath } from '@/lib/whale/marketRoutes';
-import { platformExternalUrl } from '@/lib/whale/marketUrls';
+import { platformExternalUrl, resolveExternalUrl } from '@/lib/whale/marketUrls';
 import { fmtRelativeTime } from '@/lib/whale/utils';
 
 const PAGE_SIZE = 40;
@@ -44,7 +44,7 @@ export default function ArbScannerPage() {
     <Shell>
       <PageHeader
         title="Arbitrage scanner"
-        description="Cross-venue gaps ≥ 2¢ between Polymarket & Kalshi — sorted by net profit after fees."
+        description="Cross-venue gaps ≥ 2¢ between Polymarket & Kalshi - sorted by net profit after fees."
         action={dataUpdatedAt ? <LiveRefreshNote lastFetch={dataUpdatedAt} label="Scanned" /> : null}
       />
 
@@ -175,7 +175,7 @@ export default function ArbScannerPage() {
                         Poly
                       </a>
                       <a
-                        href={spread.kalshi_url || platformExternalUrl('kalshi', { title: spread.kalshi_title })}
+                        href={resolveExternalUrl('kalshi', spread.kalshi_title, spread.kalshi_url)}
                         target="_blank"
                         rel="noreferrer"
                         className="btn btn-ghost text-[10px] !py-0.5"

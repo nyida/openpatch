@@ -1,6 +1,6 @@
 /**
  * Polymarket Gamma API client.
- * Public read-only endpoints — no API key required.
+ * Public read-only endpoints - no API key required.
  * @see https://docs.polymarket.com/api-reference/introduction
  */
 

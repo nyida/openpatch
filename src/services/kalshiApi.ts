@@ -1,5 +1,6 @@
 import { inferMarketCategory } from '@/lib/whale/categories';
-import { kalshiExternalUrl } from '@/lib/whale/marketUrls';
+import { kalshiExternalUrl, kalshiSeriesTicker } from '@/lib/whale/marketUrls';
+import { warmKalshiSeriesTitles, getCachedKalshiSeriesTitle } from '@/lib/whale/kalshiSeries';
 import type { UnifiedMarket } from './types';
 
 const KALSHI = process.env.KALSHI_API_URL ?? 'https://api.elections.kalshi.com/trade-api/v2';
@@ -12,6 +13,7 @@ async function kalshiFetch<T>(path: string): Promise<T> {
 
 type KalshiMarket = {
   ticker?: string;
+  event_ticker?: string;
   title?: string;
   yes_sub_title?: string;
   subtitle?: string;
@@ -24,6 +26,7 @@ type KalshiMarket = {
 function toMarket(m: KalshiMarket): UnifiedMarket {
   const title = m.title ?? m.ticker ?? 'Unknown';
   const eventTitle = m.yes_sub_title ?? m.subtitle ?? null;
+  const series = kalshiSeriesTicker(m.ticker, m.event_ticker);
   return {
     id: `kalshi-${m.ticker ?? title}`,
     title,
@@ -34,7 +37,13 @@ function toMarket(m: KalshiMarket): UnifiedMarket {
     probability: parseFloat(m.last_price_dollars ?? '0') || 0,
     category: inferMarketCategory(`${title} ${eventTitle ?? ''}`),
     image: null,
-    external_url: kalshiExternalUrl(m.ticker, m.title),
+    external_url: kalshiExternalUrl({
+      ticker: m.ticker,
+      eventTicker: m.event_ticker,
+      seriesTicker: series,
+      seriesTitle: series ? getCachedKalshiSeriesTitle(series) : null,
+      title: m.title,
+    }),
     status: m.status ?? 'active',
   };
 }
@@ -44,5 +53,9 @@ export async function searchKalshiEvents(query: string, limit = 30): Promise<Uni
   const data = await kalshiFetch<{ markets: KalshiMarket[] }>(
     `/markets?status=open&limit=${Math.min(limit, 100)}&mve_filter=exclude&query=${encodeURIComponent(query)}`,
   );
-  return (data.markets ?? []).map(toMarket);
+  const markets = data.markets ?? [];
+  await warmKalshiSeriesTitles(
+    markets.map((m) => kalshiSeriesTicker(m.ticker, m.event_ticker)).filter((s): s is string => Boolean(s)),
+  );
+  return markets.map(toMarket);
 }

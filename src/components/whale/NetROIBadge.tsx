@@ -31,7 +31,7 @@ export const NetROIBadge = memo(function NetROIBadge({
   }, [spread, live.isLive, live.polyPrice, live.kalshiPrice]);
 
   if (!spread || !roi) {
-    return <span className="opacity-40 font-mono tabular-nums text-[11px]">—</span>;
+    return <span className="opacity-40 font-mono tabular-nums text-[11px]">-</span>;
   }
 
   const hint =

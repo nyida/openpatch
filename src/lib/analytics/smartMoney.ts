@@ -6,7 +6,7 @@ export type SmartMoneyInput = {
   rank?: number;
 };
 
-/** Composite smart-money score — higher is better. */
+/** Composite smart-money score - higher is better. */
 export function smartMoneyScore(input: SmartMoneyInput): number {
   const mdd = Math.max(input.maxDrawdown, 1);
   const profitFactor = input.alltimeProfit / mdd;

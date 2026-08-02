@@ -119,7 +119,7 @@ export function PaperPortfolio({ onClose, inline }: { onClose?: () => void; inli
                         {p.closed_at
                           ? p.exit_price != null
                             ? `${(p.exit_price * 100).toFixed(1)}¢`
-                            : '—'
+                            : '-'
                           : `${(cur * 100).toFixed(1)}¢`}
                       </td>
                       <td className="text-right font-mono tabular-nums text-[11px]">

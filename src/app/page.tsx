@@ -1,270 +1,265 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { MarketRow, type DashboardMarket } from '@/components/whale/MarketCard';
-import { LiveRefreshNote } from '@/components/whale/LiveRefreshNote';
-import { WhaleTicker } from '@/components/whale/WhaleTicker';
-import { DataSourcesBanner } from '@/components/whale/DataSourcesBanner';
-import { ArbitrageScanner } from '@/components/ArbitrageScanner';
-import { TopMoversPanel } from '@/components/whale/TopMoversPanel';
-import { DbStatusBanner } from '@/components/whale/DbStatusBanner';
-import {
-  Shell,
-  PageHeader,
-  SearchInput,
-  Segmented,
-  Pager,
-  TableShell,
-  SkeletonTable,
-  Toolbar,
-  SectorNav,
-  FadeSwap,
-  StatStrip,
-  StatPill,
-} from '@/components/whale/Shell';
-import { inferMarketCategory, MARKET_CATEGORIES, type MarketCategory } from '@/lib/whale/categories';
-import { useScrapeStatus } from '@/lib/whale/useScrapeStatus';
-import { fetchJson } from '@/lib/whale/fetch';
-import { useArbitrageMap } from '@/lib/whale/hooks';
-import { lookupSpread } from '@/services/arbitrage.utils';
-import { isPastMarket, platformLabel, type Platform, fmtUsd } from '@/lib/whale/utils';
+import Link from 'next/link';
+import { motion, useReducedMotion } from 'framer-motion';
+import { MarketingShell, Section } from '@/components/marketing/MarketingShell';
+import { FadeUp, HeroMedia } from '@/components/marketing/Motion';
+import { TrialCtaBand } from '@/components/marketing/TrialCtaBand';
+import { PRO_PRICE_LABEL } from '@/lib/auth/types';
+import { EASE_OUT } from '@/lib/motion';
 
-const CryptoOverviewStrip = dynamic(
-  () => import('@/components/whale/CryptoOverviewStrip').then((m) => m.CryptoOverviewStrip),
-  { ssr: false, loading: () => null },
+const RevealWaveImage = dynamic(
+  () =>
+    import('@/components/ui/reveal-wave-image').then((m) => m.RevealWaveImage),
+  { ssr: false },
 );
 
-const PAGE_SIZE = 30;
-const POLL_MS = 30_000;
+const HERO_SRC = '/scenes/hero-mountains.png';
 
-const SECTOR_TABS: { id: MarketCategory | 'all'; label: string }[] = [
-  { id: 'all', label: 'All' },
-  ...MARKET_CATEGORIES.map((c) => ({ id: c, label: c })),
-];
-
-export default function DashboardPage() {
-  const [markets, setMarkets] = useState<DashboardMarket[]>([]);
-  const { status, error: statusError, refresh: refreshStatus, isLoading: statusLoading } = useScrapeStatus();
-  const [lastFetch, setLastFetch] = useState<number | null>(null);
-  const [search, setSearch] = useState('');
-  const [tab, setTab] = useState<'open' | 'archived'>('open');
-  const [category, setCategory] = useState<MarketCategory | 'all'>('all');
-  const [platform, setPlatform] = useState<Platform | 'all'>('all');
-  const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const pollMs = status?.scrape_in_progress ? 10000 : POLL_MS;
-  const { data: arbData } = useArbitrageMap(0, { refetch: false });
-  const arbMap = arbData?.byPolyTitle ?? {};
-
-  const load = useCallback(
-    async (silent = false) => {
-      if (!silent) setLoading(true);
-      setError(null);
-      try {
-        const qs = platform !== 'all' ? `?platform=${platform}` : '';
-        const data = await fetchJson<DashboardMarket[]>(`/api/dashboard${qs}`, undefined, { retries: 3 });
-        if (!Array.isArray(data)) throw new Error('Invalid response');
-        setMarkets(data);
-        setLastFetch(Date.now());
-      } catch (e) {
-        if (!silent) setMarkets([]);
-        setError(e instanceof Error ? e.message : 'Failed to load data');
-      } finally {
-        setLoading(false);
-      }
-    },
-    [platform],
+function Diagram({
+  src,
+  alt,
+}: {
+  src: string;
+  alt: string;
+}) {
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={src}
+      alt={alt}
+      className="mx-auto w-full max-w-[920px] h-auto"
+      loading="lazy"
+    />
   );
+}
 
-  useEffect(() => {
-    load();
-    const id = setInterval(() => load(true), pollMs);
-    return () => clearInterval(id);
-  }, [load, pollMs]);
-
-  useEffect(() => setPage(1), [tab, search, category, platform]);
-
-  const showVenueNav = useMemo(
-    () => (status?.platforms ?? ['polymarket']).some((p) => p !== 'polymarket'),
-    [status?.platforms],
-  );
-
-  const platformTabs = useMemo(() => {
-    if (!showVenueNav) return [];
-    const platforms = status?.platforms?.length ? status.platforms : ['polymarket'];
-    return [
-      { id: 'all' as const, label: 'All venues' },
-      ...platforms.map((p) => ({ id: p as Platform, label: platformLabel(p) })),
-    ];
-  }, [status?.platforms, showVenueNav]);
-
-  const matchesSectorAndSearch = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return (m: DashboardMarket) => {
-      if (q && !m.name.toLowerCase().includes(q)) return false;
-      if (category !== 'all' && inferMarketCategory(m.name) !== category) return false;
-      return true;
-    };
-  }, [search, category]);
-
-  const openFiltered = useMemo(
-    () => markets.filter((m) => matchesSectorAndSearch(m) && !isPastMarket(m.name)),
-    [markets, matchesSectorAndSearch],
-  );
-  const archivedFiltered = useMemo(
-    () => markets.filter((m) => matchesSectorAndSearch(m) && isPastMarket(m.name)),
-    [markets, matchesSectorAndSearch],
-  );
-
-  const filtered = useMemo(
-    () => (tab === 'open' ? openFiltered : archivedFiltered),
-    [tab, openFiltered, archivedFiltered],
-  );
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const safePage = Math.min(page, totalPages);
-  const pageItems = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
-  const viewKey = `${platform}-${category}-${tab}-${safePage}`;
-
-  const totalExposure = useMemo(
-    () => openFiltered.reduce((s, m) => s + m.total_usd, 0),
-    [openFiltered],
-  );
+export default function HomePage() {
+  const reduce = useReducedMotion();
 
   return (
-    <Shell>
-      <PageHeader
-        title="Whale holdings vs. market odds"
-        description="Value-weighted YES share across tracked wallets compared to exchange mid-price."
-        action={lastFetch ? <LiveRefreshNote lastFetch={lastFetch} label="Synced" /> : null}
-      />
+    <MarketingShell>
+      {/* Brand-first hero */}
+      <div className="px-3 pb-3 pt-1 sm:px-4 sm:pb-4">
+        <motion.div
+          className="relative flex min-h-[calc(100svh-4.5rem)] items-center justify-center overflow-hidden"
+          style={{ borderRadius: 24 }}
+          initial={reduce ? false : { opacity: 0, scale: 0.985, y: 12 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ duration: 0.9, ease: EASE_OUT }}
+        >
+          {reduce ? (
+            <HeroMedia src={HERO_SRC} />
+          ) : (
+            <div className="absolute inset-0">
+              <RevealWaveImage
+                src={HERO_SRC}
+                className="absolute inset-0 h-full w-full"
+                pixelSize={2}
+                shimmer={1}
+              />
+            </div>
+          )}
+          <div className="absolute inset-0 bg-black/55" />
 
-      <DbStatusBanner error={statusError ?? error} onRetry={() => { refreshStatus(); load(); }} loading={statusLoading || loading} />
+          <div className="relative z-[1] w-full px-5 py-20 text-center sm:px-8">
+            <motion.div
+              className="flex items-center justify-center gap-3 sm:gap-4"
+              initial={reduce ? false : { opacity: 0, y: 22 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.85, delay: 0.2, ease: EASE_OUT }}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/logo.png"
+                alt=""
+                className="drop-shadow-sm h-[52px] w-[52px] rounded-xl object-cover sm:h-[72px] sm:w-[72px]"
+                width={72}
+                height={72}
+              />
+              <p className="font-sans text-[clamp(2.5rem,8vw,4.75rem)] font-bold tracking-[-0.045em] text-white">
+                Algomarket
+              </p>
+            </motion.div>
 
-      {status && (
-        <StatStrip>
-          <StatPill label="Open contracts" value={openFiltered.length.toLocaleString()} accent="mint" />
-          <StatPill label="Whales tracked" value={`${status.trader_count} / ${status.whale_target}`} />
-          <StatPill label="Total exposure" value={fmtUsd(totalExposure)} />
-          <StatPill label="Live fills" value={status.live_trade_count.toLocaleString()} />
-          <StatPill label="Leaderboard" value={status.all_trader_count.toLocaleString()} />
-        </StatStrip>
-      )}
+            <motion.h1
+              className="mx-auto mt-6 max-w-[26ch] font-sans text-[clamp(1.15rem,2.4vw,1.5rem)] font-medium leading-snug tracking-[-0.02em] text-white"
+              initial={reduce ? false : { opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.75, delay: 0.4, ease: EASE_OUT }}
+            >
+              Whale analytics for Polymarket and Kalshi.
+            </motion.h1>
+          </div>
 
-      <DataSourcesBanner />
-      <TopMoversPanel since="1h" limit={6} />
-      <CryptoOverviewStrip />
-
-      <div className="flex flex-wrap gap-2 mb-3">
-        {showVenueNav && (
-          <SectorNav value={platform} onChange={setPlatform} options={platformTabs} className="!mb-0 flex-1" />
-        )}
-        <SectorNav value={category} onChange={setCategory} options={SECTOR_TABS} className="!mb-0 flex-1" />
+          <motion.a
+            href="#product"
+            className="absolute bottom-5 right-5 z-[1] flex items-center gap-2 text-[12px] text-white sm:bottom-7 sm:right-7"
+            initial={reduce ? false : { opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.9, duration: 0.5 }}
+            whileHover={{ opacity: 0.8 }}
+          >
+            <span className="hidden sm:inline">Scroll</span>
+            <motion.span
+              className="flex h-7 w-7 items-center justify-center border border-white/30"
+              style={{ borderRadius: 4 }}
+              animate={reduce ? undefined : { y: [0, 4, 0] }}
+              transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
+            >
+              ↓
+            </motion.span>
+          </motion.a>
+        </motion.div>
       </div>
 
-      <Toolbar>
-        <SearchInput value={search} onChange={setSearch} placeholder="Filter contracts…" />
-        <Segmented
-          options={[
-            { id: 'open' as const, label: 'Open' },
-            { id: 'archived' as const, label: 'Archived' },
-          ]}
-          value={tab}
-          onChange={setTab}
-          counts={{ open: openFiltered.length, archived: archivedFiltered.length }}
-        />
-      </Toolbar>
-
-      {error && (
-        <div className="error-banner">
-          <p>{error}</p>
-        </div>
-      )}
-
-      {loading ? (
-        <SkeletonTable rows={14} />
-      ) : !error && filtered.length === 0 ? (
-        <FadeSwap viewKey={`empty-${viewKey}`}>
-          <div className="empty surface">
-            {markets.length === 0 ? (
-              <>
-                <span className="empty-title">No whale data yet</span>
-                <span className="empty-hint">
-                  Set WHALE_DB_PATH in .env.local or run npm run scrape:ensure
-                </span>
-              </>
-            ) : (
-              <span className="empty-title">No contracts match the current filters</span>
-            )}
-          </div>
-        </FadeSwap>
-      ) : !error ? (
-        <FadeSwap viewKey={viewKey}>
-          <TableShell
-            footer={
-              filtered.length > PAGE_SIZE ? (
-                <Pager
-                  page={safePage}
-                  totalPages={totalPages}
-                  total={filtered.length}
-                  pageSize={PAGE_SIZE}
-                  onChange={setPage}
-                />
-              ) : undefined
-            }
+      {/* Free vs Pro diagram */}
+      <Section id="product" wide className="py-16 font-sans text-white md:py-24">
+        <FadeUp>
+          <h2 className="mx-auto max-w-[18ch] text-center font-sans text-[clamp(1.5rem,3vw,2rem)] font-bold tracking-[-0.03em] text-white">
+            Free core desk. Pro for the edge.
+          </h2>
+          <p className="mx-auto mt-4 max-w-lg text-center text-[15px] leading-relaxed text-white">
+            Whales, screener, and traders on Free. Arbitrage, live flow, and analytics on Pro.
+          </p>
+        </FadeUp>
+        <FadeUp delay={0.08} className="mt-10">
+          <Diagram
+            src="/scenes/home-free-pro.png"
+            alt="Free features versus Pro features on Algomarket"
+          />
+        </FadeUp>
+        <FadeUp delay={0.12} className="mt-8 flex justify-center">
+          <Link
+            href="/pricing"
+            className="text-[14px] font-semibold text-white transition hover:opacity-80"
           >
-            <table className="data-table dashboard-table">
-              <colgroup>
-                <col className="col-rank" />
-                <col className="col-market" />
-                <col className="col-cat" />
-                <col className="col-bias" />
-                <col className="col-bar" />
-                <col className="col-bar" />
-                <col className="col-edge" />
-                <col className="col-arb" />
-                <col className="col-spark" />
-                <col className="col-num" />
-                <col className="col-num" />
-                <col className="col-act" />
-              </colgroup>
-              <thead>
-                <tr>
-                  <th className="col-rank">#</th>
-                  <th className="col-market">Contract</th>
-                  <th className="col-cat">Sector</th>
-                  <th className="col-bias">Signal</th>
-                  <th className="col-bar">Mkt %</th>
-                  <th className="col-bar">Whale %</th>
-                  <th className="col-edge">Δ pp</th>
-                  <th className="col-arb">Net profit</th>
-                  <th className="col-spark">Trend</th>
-                  <th className="col-num">Notional</th>
-                  <th className="col-num">N</th>
-                  <th className="col-act" />
-                </tr>
-              </thead>
-              <tbody>
-                {pageItems.map((m, i) => (
-                  <MarketRow
-                    key={`${m.platform}-${m.name}`}
-                    market={m}
-                    rank={(safePage - 1) * PAGE_SIZE + i + 1}
-                    spread={lookupSpread(arbMap, m.name.replace(/\s*\[(YES|NO)\]\s*$/i, ''))}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </TableShell>
-        </FadeSwap>
-      ) : null}
+            Full pricing →
+          </Link>
+        </FadeUp>
+      </Section>
 
-      <ArbitrageScanner />
+      {/* Whales */}
+      <Section id="whales" wide className="pb-16 font-sans text-white md:pb-24">
+        <FadeUp>
+          <p className="font-sans text-[14px] font-bold tracking-tight text-white">Free</p>
+          <h2 className="mt-2 max-w-[16ch] font-sans text-[clamp(1.45rem,2.8vw,1.85rem)] font-bold tracking-[-0.03em] text-white">
+            Whale desk
+          </h2>
+          <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-white">
+            Rank large positions against market odds. See notional, contracts held, and last activity
+            in one view.
+          </p>
+        </FadeUp>
+        <FadeUp delay={0.08} className="mt-10">
+          <Diagram
+            src="/scenes/home-whales.png"
+            alt="Whale holdings dashboard with notional versus market odds"
+          />
+        </FadeUp>
+      </Section>
 
-      <WhaleTicker />
-    </Shell>
+      {/* Screener */}
+      <Section id="screener" wide className="pb-16 font-sans text-white md:pb-24">
+        <FadeUp>
+          <p className="font-sans text-[14px] font-bold tracking-tight text-white">Free</p>
+          <h2 className="mt-2 max-w-[16ch] font-sans text-[clamp(1.45rem,2.8vw,1.85rem)] font-bold tracking-[-0.03em] text-white">
+            Market screener
+          </h2>
+          <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-white">
+            Filter by liquidity, spread, flow, and crowdedness. Highlight the books that matter.
+          </p>
+        </FadeUp>
+        <FadeUp delay={0.08} className="mt-10">
+          <Diagram
+            src="/scenes/home-screener.png"
+            alt="Market screener with liquidity spread flow and crowded filters"
+          />
+        </FadeUp>
+      </Section>
+
+      {/* Arbitrage / Pro */}
+      <Section id="platform" wide className="pb-16 font-sans text-white md:pb-24">
+        <FadeUp>
+          <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
+            <p className="font-sans text-[14px] font-bold tracking-tight text-white">Pro</p>
+            <span
+              className="font-sans text-[12px] font-bold tracking-tight text-black"
+              style={{
+                background: 'var(--mint)',
+                padding: '3px 8px',
+                borderRadius: 3,
+              }}
+            >
+              {PRO_PRICE_LABEL}
+            </span>
+          </div>
+          <h2 className="mt-2 max-w-[18ch] font-sans text-[clamp(1.45rem,2.8vw,1.85rem)] font-bold tracking-[-0.03em] text-white">
+            Cross-venue arbitrage
+          </h2>
+          <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-white">
+            Spot Polymarket ↔ Kalshi spreads, then follow capital flows from buy to sell.
+          </p>
+        </FadeUp>
+        <FadeUp delay={0.08} className="mt-10">
+          <Diagram
+            src="/scenes/home-arb-spread.png"
+            alt="Polymarket to Kalshi spread and capital flows diagram"
+          />
+        </FadeUp>
+      </Section>
+
+      {/* How to start */}
+      <Section id="how" className="pb-20 font-sans text-white md:pb-28">
+        <FadeUp>
+          <h2 className="font-sans text-[clamp(1.45rem,2.8vw,1.85rem)] font-bold tracking-[-0.03em] text-white">
+            How to start
+          </h2>
+        </FadeUp>
+
+        <ol className="mt-10 space-y-8">
+          {[
+            {
+              n: '1',
+              title: 'Create a free account',
+              body: 'Open whales, screener, and traders right away.',
+            },
+            {
+              n: '2',
+              title: 'Read both venues in one place',
+              body: 'Track holdings vs odds and crowded books without tab-switching.',
+            },
+            {
+              n: '3',
+              title: 'Upgrade to Pro when you need it',
+              body: `Add arbs, live flow, and analytics for ${PRO_PRICE_LABEL}.`,
+            },
+          ].map((step, i) => (
+            <FadeUp key={step.n} delay={0.04 + i * 0.05}>
+              <div className="flex gap-4 sm:gap-5">
+                <span className="font-sans text-[15px] font-bold tabular-nums text-white">
+                  {step.n}.
+                </span>
+                <div>
+                  <h3 className="font-sans text-[16px] font-bold tracking-tight text-white">
+                    {step.title}
+                  </h3>
+                  <p className="mt-1.5 text-[15px] leading-relaxed text-white">{step.body}</p>
+                </div>
+              </div>
+            </FadeUp>
+          ))}
+        </ol>
+      </Section>
+
+      <Section className="pb-20 md:pb-28">
+        <TrialCtaBand
+          title="Start free"
+          subtitle="Open the free desk now. Upgrade to Pro when you want arbs, live flow, and analytics."
+          buttonLabel="Start free →"
+        />
+      </Section>
+    </MarketingShell>
   );
 }

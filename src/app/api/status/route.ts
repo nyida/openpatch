@@ -1,10 +1,14 @@
+import { guardProApi } from '@/lib/auth/guardApi';
 import { getScrapeStatus } from '@/lib/whale/status';
 import { cachedResponse } from '@/lib/whale/responseCache';
 import { whaleError, whaleJson } from '@/lib/whale/api';
 
 const CACHE_MS = 30_000;
 
-export async function GET() {
+export async function GET(request: Request) {
+  const _denied = await guardProApi(request);
+  if (_denied) return _denied;
+
   try {
     return whaleJson(cachedResponse('status', CACHE_MS, getScrapeStatus));
   } catch (e) {

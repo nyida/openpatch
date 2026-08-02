@@ -12,7 +12,7 @@ export default function PortfolioToolPage() {
     <Shell>
       <PageHeader
         title="Portfolio tracker"
-        description="Track virtual positions via paper trading. Connect a wallet for live tracking — coming soon."
+        description="Track virtual positions via paper trading. Connect a wallet for live tracking - coming soon."
         action={
           <Link href="/" className="btn btn-ghost text-xs">
             Back to dashboard

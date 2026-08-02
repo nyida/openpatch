@@ -40,7 +40,7 @@ export function canNotify(): boolean {
 }
 
 function venueLabel(spread: ArbitrageSpread): string {
-  return spread.direction === 'buy_poly' ? 'Polymarket' : spread.direction === 'buy_kalshi' ? 'Kalshi' : '—';
+  return spread.direction === 'buy_poly' ? 'Polymarket' : spread.direction === 'buy_kalshi' ? 'Kalshi' : '-';
 }
 
 function buyPrice(spread: ArbitrageSpread): number {

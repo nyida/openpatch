@@ -19,6 +19,7 @@ import {
   TableShell,
   SkeletonList,
 } from '@/components/whale/Shell';
+import { authFetch } from '@/lib/auth/client';
 import { decodeMarketId, resolveMarketIdentity } from '@/lib/whale/marketRoutes';
 import { traderProfilePath } from '@/lib/whale/traderRoutes';
 import { platformExternalUrl } from '@/lib/whale/marketUrls';
@@ -141,7 +142,7 @@ export function MarketDetailView() {
       return;
     }
     setPositionsLoading(true);
-    fetch(
+    authFetch(
       `/api/market_traders?market=${encodeURIComponent(decoded.title)}&platform=${encodeURIComponent(decoded.platform)}`,
     )
       .then((r) => r.json())
@@ -149,7 +150,7 @@ export function MarketDetailView() {
       .catch(() => setPositions([]))
       .finally(() => setPositionsLoading(false));
 
-    fetch(`/api/live_whales?min_size=100&platform=${decoded.platform}&limit=200`)
+    authFetch(`/api/live_whales?min_size=100&platform=${decoded.platform}&limit=200`)
       .then((r) => r.json())
       .then((data) => {
         const trades = (data.trades ?? []) as LiveTrade[];
@@ -171,7 +172,7 @@ export function MarketDetailView() {
       limit: '40',
       offset: '0',
     });
-    fetch(`/api/market_screener?${params}`)
+    authFetch(`/api/market_screener?${params}`)
       .then((r) => r.json())
       .then((data) => {
         const rows = (data.rows ?? []) as ScreenerRow[];
@@ -260,11 +261,11 @@ export function MarketDetailView() {
         <div className="surface p-4 mb-4">
           <p className="text-[10px] uppercase mb-2" style={{ color: 'var(--text-3)' }}>24h range · resolution</p>
           <div className="flex flex-wrap gap-4 text-sm font-mono tabular-nums">
-            <span>O {screenerRow.price_open != null ? fmtPct(screenerRow.price_open) : '—'}</span>
-            <span>H {screenerRow.price_high != null ? fmtPct(screenerRow.price_high) : '—'}</span>
-            <span>L {screenerRow.price_low != null ? fmtPct(screenerRow.price_low) : '—'}</span>
+            <span>O {screenerRow.price_open != null ? fmtPct(screenerRow.price_open) : '-'}</span>
+            <span>H {screenerRow.price_high != null ? fmtPct(screenerRow.price_high) : '-'}</span>
+            <span>L {screenerRow.price_low != null ? fmtPct(screenerRow.price_low) : '-'}</span>
             <span style={{ color: 'var(--text-3)' }}>
-              Δ {screenerRow.change_1d != null ? `${screenerRow.change_1d >= 0 ? '+' : ''}${(screenerRow.change_1d * 100).toFixed(1)} pp` : '—'}
+              Δ {screenerRow.change_1d != null ? `${screenerRow.change_1d >= 0 ? '+' : ''}${(screenerRow.change_1d * 100).toFixed(1)} pp` : '-'}
             </span>
             {screenerRow.days_to_resolution != null && (
               <span style={{ color: 'var(--text-3)' }}>{screenerRow.days_to_resolution}d to resolve</span>
@@ -299,7 +300,7 @@ export function MarketDetailView() {
             <SkeletonList n={4} />
           ) : positions.length === 0 ? (
             <p className="text-xs py-2" style={{ color: 'var(--text-3)' }}>
-              {venue === 'kalshi' ? 'Whale DB tracks Polymarket wallets — Kalshi tape is in Live feed.' : 'No whale holdings on this contract.'}
+              {venue === 'kalshi' ? 'Whale DB tracks Polymarket wallets - Kalshi tape is in Live feed.' : 'No whale holdings on this contract.'}
             </p>
           ) : (
             <TableShell>

@@ -26,7 +26,10 @@
   --radius: 6px;
   --radius-lg: 10px;
   --ease: cubic-bezier(0.32, 0.72, 0, 1);
-  --t: 180ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --t: 200ms;
+  --t-fast: 140ms;
+  --t-slow: 320ms;
 }
 
 @layer base {
@@ -53,27 +56,16 @@
     outline-offset: 2px;
   }
 
-  .overflow-x-auto,
-  .scrollable-y {
-    scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+  /* Hide scrollbars - keep scroll behavior, lose the chrome */
+  * {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
   }
 
-  .overflow-x-auto::-webkit-scrollbar,
-  .scrollable-y::-webkit-scrollbar {
-    height: 5px;
-    width: 5px;
-  }
-
-  .overflow-x-auto::-webkit-scrollbar-thumb,
-  .scrollable-y::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.15);
-    border-radius: 99px;
-  }
-
-  .overflow-x-auto::-webkit-scrollbar-track,
-  .scrollable-y::-webkit-scrollbar-track {
-    background: transparent;
+  *::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
   }
 }
 
@@ -229,7 +221,18 @@
 
   .btn {
     @apply inline-flex items-center justify-center gap-1.5 font-medium text-xs px-2.5 py-1.5 rounded-md border-0;
-    transition: background var(--t) var(--ease), color var(--t) var(--ease);
+    transition:
+      background var(--t) var(--ease),
+      color var(--t) var(--ease),
+      transform var(--t-fast) var(--ease),
+      box-shadow var(--t) var(--ease);
+  }
+  .btn:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+  .btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
   }
 
   .btn-ghost {
@@ -245,6 +248,15 @@
     background: var(--bg-card);
     border: 1px solid var(--line);
     border-radius: var(--radius-lg);
+    transition: border-color var(--t) var(--ease), box-shadow var(--t-slow) var(--ease-out);
+  }
+
+  .panel-swap {
+    /* keep paint cheap during filter/tab swaps */
+  }
+
+  .route-transition {
+    /* opacity-only page enter */
   }
 
   .toolbar {
@@ -808,11 +820,17 @@
   .icon-btn {
     @apply inline-flex items-center justify-center w-6 h-6 rounded;
     color: #ffffff;
-    transition: color var(--t) var(--ease), background var(--t) var(--ease);
+    transition:
+      color var(--t) var(--ease),
+      background var(--t) var(--ease),
+      transform var(--t-fast) var(--ease);
   }
   .icon-btn:hover {
     color: #ffffff;
     background: rgba(255,255,255,0.08);
+  }
+  .icon-btn:active {
+    transform: scale(0.94);
   }
 
   .chevron { transition: transform 0.32s var(--ease); }
@@ -1106,4 +1124,23 @@
 @keyframes pulse-dot {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.35; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .panel-swap,
+  .route-transition,
+  .shimmer {
+    animation: none !important;
+    filter: none !important;
+    transform: none !important;
+  }
 }

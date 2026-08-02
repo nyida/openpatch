@@ -9,6 +9,7 @@ import { useScrapeStatus } from '@/lib/whale/useScrapeStatus';
 import { useAppStore } from '@/context/AppStore';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { fmtUsd } from '@/lib/whale/utils';
+import { authFetch } from '@/lib/auth/client';
 
 export function DataFeedBar() {
   const { status, lastFetch, error, refresh, isLoading } = useScrapeStatus();
@@ -20,7 +21,7 @@ export function DataFeedBar() {
   useEffect(() => {
     if (bootstrapped.current) return;
     bootstrapped.current = true;
-    fetch('/api/bootstrap', { cache: 'no-store' }).catch(() => {});
+    authFetch('/api/bootstrap', { cache: 'no-store' }).catch(() => {});
   }, []);
 
   if (!status) {

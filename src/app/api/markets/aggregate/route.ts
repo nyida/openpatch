@@ -1,3 +1,4 @@
+import { guardProApi } from '@/lib/auth/guardApi';
 import { aggregateMarkets } from '@/lib/api/aggregator';
 import { cachedResponseAsync } from '@/lib/whale/responseCache';
 import { whaleError, whaleJson } from '@/lib/whale/api';
@@ -5,6 +6,9 @@ import { whaleError, whaleJson } from '@/lib/whale/api';
 const CACHE_MS = 90_000;
 
 export async function GET(req: Request) {
+  const _denied = await guardProApi(req);
+  if (_denied) return _denied;
+
   try {
     const url = new URL(req.url);
     const limit = Math.min(parseInt(url.searchParams.get('limit') ?? '200', 10) || 200, 500);

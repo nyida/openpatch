@@ -11,8 +11,27 @@ export const KALSHI_WS_URL = 'wss://api.elections.kalshi.com/trade-api/ws/v2';
 export const POLY_WS_URL = 'wss://ws-subscriptions-clob.polymarket.com/ws/market';
 
 export function kalshiTickerFromUrl(url: string): string | null {
-  const m = url.match(/kalshi\.com\/markets\/([^/?#]+)/i);
-  return m?.[1] ?? null;
+  try {
+    const u = new URL(url);
+    const fromQuery = u.searchParams.get('market') || u.searchParams.get('ticker');
+    if (fromQuery?.trim()) return fromQuery.trim().toUpperCase();
+
+    const parts = u.pathname.split('/').filter(Boolean);
+    // Legacy broken links: /markets/{FULL_MARKET_TICKER}
+    if (parts[0]?.toLowerCase() === 'markets' && parts.length === 2) {
+      const seg = parts[1];
+      if (/^[A-Z0-9]+-\d/i.test(seg)) return seg.toUpperCase();
+    }
+    // Canonical: /markets/{series}/{slug}/{event} - event ticker is usable for many books
+    if (parts[0]?.toLowerCase() === 'markets' && parts.length >= 3) {
+      const last = parts[parts.length - 1];
+      if (/^[A-Z0-9]+-\d/i.test(last)) return last.toUpperCase();
+    }
+  } catch {
+    const m = url.match(/[?&]market=([^&#]+)/i);
+    if (m?.[1]) return decodeURIComponent(m[1]).toUpperCase();
+  }
+  return null;
 }
 
 export function polySlugFromUrl(url: string): string | null {

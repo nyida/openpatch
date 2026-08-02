@@ -16,7 +16,7 @@ export const ArbitrageROI = memo(function ArbitrageROI({
   spread?: ArbitrageSpread | null;
 }) {
   if (!spread) {
-    return <span className="opacity-40 font-mono tabular-nums text-[11px]">—</span>;
+    return <span className="opacity-40 font-mono tabular-nums text-[11px]">-</span>;
   }
 
   const roi = spread.roi;

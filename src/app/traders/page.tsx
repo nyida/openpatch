@@ -83,15 +83,15 @@ export default function TradersPage() {
 
   return (
     <Shell>
-      <PageHeader title="Leaderboard" description="All-time profit by Polymarket whale wallets — smart money scores and follow list" />
+      <PageHeader title="Leaderboard" description="All-time profit by Polymarket whale wallets - smart money scores and follow list" />
 
       <DbStatusBanner error={error} onRetry={load} loading={loading} />
 
       <StatStrip>
-        <StatPill label="Traders" value={loading ? '—' : traders.length.toLocaleString()} />
-        <StatPill label="Top profit" value={loading ? '—' : fmtUsd(traders[0]?.alltime_profit ?? 0)} accent="mint" />
-        <StatPill label="Combined P&amp;L" value={loading ? '—' : fmtUsd(totalProfit)} />
-        <StatPill label="Avg win rate" value={loading ? '—' : `${avgWinRate.toFixed(1)}%`} />
+        <StatPill label="Traders" value={loading ? '-' : traders.length.toLocaleString()} />
+        <StatPill label="Top profit" value={loading ? '-' : fmtUsd(traders[0]?.alltime_profit ?? 0)} accent="mint" />
+        <StatPill label="Combined P&amp;L" value={loading ? '-' : fmtUsd(totalProfit)} />
+        <StatPill label="Avg win rate" value={loading ? '-' : `${avgWinRate.toFixed(1)}%`} />
       </StatStrip>
 
       <Toolbar>

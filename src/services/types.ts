@@ -33,6 +33,7 @@ export type ArbitrageSpread = {
   first_seen_at: number;
   poly_url: string;
   kalshi_url: string;
+  kalshi_ticker: string | null;
 };
 
 export type UnifiedSearchParams = {

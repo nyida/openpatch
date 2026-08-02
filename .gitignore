@@ -18,3 +18,7 @@ coverage
 .cache/
 .venv-evals/
 app_runs/
+
+# Auth/billing local store
+data/
+

@@ -104,7 +104,7 @@ export function marketDetailPath(
   return `/market/${id}${qs ? `?${qs}` : ''}`;
 }
 
-/** Prefer explicit query params — they survive URL encoding issues. */
+/** Prefer explicit query params - they survive URL encoding issues. */
 export function resolveMarketIdentity(
   marketId: string,
   searchParams: { title?: string | null; platform?: string | null; venue?: string | null },

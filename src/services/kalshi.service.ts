@@ -1,5 +1,6 @@
 import { inferMarketCategory } from '@/lib/whale/categories';
-import { kalshiExternalUrl } from '@/lib/whale/marketUrls';
+import { kalshiExternalUrl, kalshiSeriesTicker } from '@/lib/whale/marketUrls';
+import { warmKalshiSeriesTitles, getCachedKalshiSeriesTitle } from '@/lib/whale/kalshiSeries';
 import type { UnifiedMarket } from './types';
 
 const KALSHI = process.env.KALSHI_API_URL ?? 'https://api.elections.kalshi.com/trade-api/v2';
@@ -12,6 +13,7 @@ async function kalshiFetch<T>(path: string): Promise<T> {
 
 type KalshiMarket = {
   ticker?: string;
+  event_ticker?: string;
   title?: string;
   yes_sub_title?: string;
   subtitle?: string;
@@ -25,6 +27,7 @@ type KalshiMarket = {
 function toUnified(m: KalshiMarket): UnifiedMarket {
   const title = m.title ?? m.ticker ?? 'Unknown';
   const eventTitle = m.yes_sub_title ?? m.subtitle ?? null;
+  const series = kalshiSeriesTicker(m.ticker, m.event_ticker);
   return {
     id: `kalshi-${m.ticker ?? title}`,
     title,
@@ -35,9 +38,23 @@ function toUnified(m: KalshiMarket): UnifiedMarket {
     probability: parseFloat(m.last_price_dollars ?? '0') || 0,
     category: inferMarketCategory(`${title} ${eventTitle ?? ''}`),
     image: null,
-    external_url: kalshiExternalUrl(m.ticker, m.title),
+    external_url: kalshiExternalUrl({
+      ticker: m.ticker,
+      eventTicker: m.event_ticker,
+      seriesTicker: series,
+      seriesTitle: series ? getCachedKalshiSeriesTitle(series) : null,
+      title: m.title,
+    }),
     status: m.status ?? 'active',
   };
+}
+
+async function withSeriesTitles(markets: KalshiMarket[]): Promise<UnifiedMarket[]> {
+  const series = markets
+    .map((m) => kalshiSeriesTicker(m.ticker, m.event_ticker))
+    .filter((s): s is string => Boolean(s));
+  await warmKalshiSeriesTitles(series);
+  return markets.map(toUnified);
 }
 
 export async function searchKalshi(q: string, limit = 30): Promise<UnifiedMarket[]> {
@@ -45,7 +62,7 @@ export async function searchKalshi(q: string, limit = 30): Promise<UnifiedMarket
   const data = await kalshiFetch<{ markets: KalshiMarket[] }>(
     `/markets?status=open&limit=${Math.min(limit, 100)}&mve_filter=exclude&query=${encodeURIComponent(q)}`,
   );
-  return (data.markets ?? []).map(toUnified);
+  return withSeriesTitles(data.markets ?? []);
 }
 
 export async function fetchTopKalshi(maxPages = 4): Promise<UnifiedMarket[]> {
@@ -61,8 +78,8 @@ export async function fetchTopKalshi(maxPages = 4): Promise<UnifiedMarket[]> {
     cursor = data.cursor;
     if (!cursor || (data.markets?.length ?? 0) < 1000) break;
   }
-  return all
-    .map(toUnified)
+  const markets = await withSeriesTitles(all);
+  return markets
     .filter((m) => m.volume > 0 || m.probability > 0)
     .sort((a, b) => b.volume - a.volume);
 }
