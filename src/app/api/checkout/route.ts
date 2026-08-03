@@ -7,9 +7,27 @@ import { upgradeToPro } from '@/lib/auth/store';
 
 export const runtime = 'nodejs';
 
+function allowDevSubscribe(): boolean {
+  if (process.env.ALLOW_DEV_SUBSCRIBE !== '1') return false;
+  // Never allow free Pro upgrades on Render / production
+  if (process.env.NODE_ENV === 'production') return false;
+  if (process.env.RENDER === 'true' || process.env.RENDER_SERVICE_ID) return false;
+  return true;
+}
+
+function defaultAppOrigin(): string {
+  return (
+    process.env.APP_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    process.env.RENDER_EXTERNAL_URL ||
+    'http://localhost:3000'
+  ).replace(/\/$/, '');
+}
+
 /**
  * Create Stripe Checkout for Algomarket Pro.
- * If Stripe is not configured and ALLOW_DEV_SUBSCRIBE=1, instantly upgrades (local only).
+ * Uses the same Stripe account / price as AuditGPT when STRIPE_PRICE_ID is set.
+ * ALLOW_DEV_SUBSCRIBE only works locally (never on Render).
  */
 export async function POST(request: Request) {
   const ip = clientIp(request);
@@ -24,13 +42,19 @@ export async function POST(request: Request) {
     return json({ alreadyPro: true, url: null, sessionId: null });
   }
 
+  if (!user.emailVerified) {
+    return error('Verify your email before upgrading to Pro', 403, {
+      code: 'EMAIL_UNVERIFIED',
+    });
+  }
+
   const body = (await request.json().catch(() => ({}))) as {
     successUrl?: string;
     cancelUrl?: string;
   };
 
   if (!process.env.STRIPE_SECRET_KEY) {
-    if (process.env.ALLOW_DEV_SUBSCRIBE === '1') {
+    if (allowDevSubscribe()) {
       await upgradeToPro(user.id);
       return json({
         alreadyPro: true,
@@ -40,7 +64,7 @@ export async function POST(request: Request) {
       });
     }
     return error(
-      'Stripe is not configured. Set STRIPE_SECRET_KEY and optionally STRIPE_PRICE_ID.',
+      'Stripe is not configured. Set STRIPE_SECRET_KEY and STRIPE_PRICE_ID on Render.',
       503,
       { code: 'STRIPE_MISSING' },
     );
@@ -54,17 +78,18 @@ export async function POST(request: Request) {
     );
   }
 
+  const origin = defaultAppOrigin();
   const rawSuccess =
     body.successUrl ||
     process.env.STRIPE_SUCCESS_URL ||
-    'http://localhost:3000/paywall?success=1';
+    `${origin}/paywall?success=1`;
   const successUrl = rawSuccess.includes('{CHECKOUT_SESSION_ID}')
     ? rawSuccess
     : `${rawSuccess}${rawSuccess.includes('?') ? '&' : '?'}session_id={CHECKOUT_SESSION_ID}`;
   const cancelUrl =
     body.cancelUrl ||
     process.env.STRIPE_CANCEL_URL ||
-    'http://localhost:3000/paywall?canceled=1';
+    `${origin}/paywall?canceled=1`;
 
   const stripe = getStripe();
   const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = PRO_PRICE_ID
@@ -78,7 +103,7 @@ export async function POST(request: Request) {
             product_data: {
               name: 'Algomarket Pro',
               description:
-                'Account billing for Algomarket - whale analytics, arbs, and screener stay available on free.',
+                'Cross-venue arbs, live whale flow, and market exposure.',
             },
           },
           quantity: 1,
@@ -89,12 +114,20 @@ export async function POST(request: Request) {
     mode: 'subscription',
     customer_email: user.email,
     client_reference_id: user.id,
-    metadata: { userId: user.id },
+    metadata: {
+      userId: user.id,
+      product: 'algomarket',
+      app: 'algomarket',
+    },
     line_items: lineItems,
     success_url: successUrl,
     cancel_url: cancelUrl,
     subscription_data: {
-      metadata: { userId: user.id },
+      metadata: {
+        userId: user.id,
+        product: 'algomarket',
+        app: 'algomarket',
+      },
     },
   });
 

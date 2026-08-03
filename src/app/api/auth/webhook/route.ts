@@ -41,9 +41,14 @@ async function handleStripe(request: Request) {
 
   switch (event.type) {
     case 'checkout.session.completed': {
-      const userId =
-        (obj.metadata as { userId?: string } | undefined)?.userId ||
-        (obj.client_reference_id as string | undefined);
+      const meta = obj.metadata as
+        | { userId?: string; product?: string; app?: string }
+        | undefined;
+      // Ignore checkouts that belong to another app on the same Stripe account
+      if (meta?.app && meta.app !== 'algomarket') {
+        break;
+      }
+      const userId = meta?.userId || (obj.client_reference_id as string | undefined);
       const customerId = obj.customer as string | undefined;
       const subscriptionId = obj.subscription as string | undefined;
       if (userId) {
@@ -52,7 +57,13 @@ async function handleStripe(request: Request) {
       break;
     }
     case 'customer.subscription.deleted': {
-      const userId = (obj.metadata as { userId?: string } | undefined)?.userId;
+      const meta = obj.metadata as
+        | { userId?: string; app?: string }
+        | undefined;
+      if (meta?.app && meta.app !== 'algomarket') {
+        break;
+      }
+      const userId = meta?.userId;
       if (userId) await setTier(userId, 'free');
       break;
     }

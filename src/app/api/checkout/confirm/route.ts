@@ -34,7 +34,11 @@ export async function POST(request: Request) {
     return error('Session does not match this account', 403);
   }
 
-  if (session.payment_status === 'paid' || session.status === 'complete') {
+  // Only upgrade when Stripe confirms payment for this checkout
+  if (
+    session.payment_status === 'paid' ||
+    (session.status === 'complete' && session.payment_status !== 'unpaid')
+  ) {
     const profile = await upgradeToPro(
       auth.user.id,
       typeof session.customer === 'string' ? session.customer : undefined,
