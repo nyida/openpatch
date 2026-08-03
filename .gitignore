@@ -27,5 +27,4 @@ data/
 storage/*
 !storage/whale_data.db
 !storage/README.md
-
-
+.stripe-render-env.txt
