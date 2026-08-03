@@ -1,7 +1,8 @@
 import { hashPassword, signToken } from '@/lib/auth/crypto';
+import { issueAndSendVerificationEmail } from '@/lib/auth/email';
 import { error, json } from '@/lib/auth/http';
 import { clientIp, rateLimit } from '@/lib/auth/rateLimit';
-import { createUser, findUserByEmail } from '@/lib/auth/store';
+import { createUser, findUserByEmail, toPublicUser } from '@/lib/auth/store';
 
 export const runtime = 'nodejs';
 
@@ -34,10 +35,38 @@ export async function POST(request: Request) {
       email,
       passwordHash: hashPassword(password),
       displayName: displayName || undefined,
+      emailVerified: false,
     });
+
+    let verifyUrl: string | undefined;
+    let emailSent = false;
+    let emailError: string | undefined;
+    try {
+      const mail = await issueAndSendVerificationEmail({
+        userId: user.id,
+        email: user.email,
+        displayName: user.displayName,
+      });
+      verifyUrl = mail.verifyUrl;
+      emailSent = mail.sent;
+      emailError = mail.error;
+    } catch (mailErr) {
+      console.error('signup verification email', mailErr);
+      emailError =
+        mailErr instanceof Error ? mailErr.message : 'Could not send email';
+    }
+
     const token = signToken({ sub: user.id, email: user.email });
-    const { passwordHash: _, ...profile } = user;
-    return json({ token, user: profile });
+    return json({
+      token,
+      user: toPublicUser(user),
+      needsVerification: true,
+      emailSent,
+      ...(emailError ? { emailError } : null),
+      ...(verifyUrl && process.env.NODE_ENV !== 'production'
+        ? { verifyPreview: verifyUrl }
+        : null),
+    });
   } catch (err) {
     if (err instanceof Error && /already registered/i.test(err.message)) {
       return error('An account with that email already exists', 409, {

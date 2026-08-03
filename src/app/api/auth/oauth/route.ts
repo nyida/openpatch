@@ -2,14 +2,15 @@ import { signToken } from '@/lib/auth/crypto';
 import { error, json } from '@/lib/auth/http';
 import { verifyAppleIdToken, verifyGoogleIdToken } from '@/lib/auth/oauth';
 import { clientIp, rateLimit } from '@/lib/auth/rateLimit';
-import { createUser, findUserByEmail } from '@/lib/auth/store';
+import {
+  createUser,
+  findUserByEmail,
+  markEmailVerified,
+  toPublicUser,
+} from '@/lib/auth/store';
 
 export const runtime = 'nodejs';
 
-/**
- * Exchange a Google / Apple ID token for an Algomarket session.
- * Body: { provider: 'google'|'apple', idToken, email?, displayName? }
- */
 export async function POST(request: Request) {
   const ip = clientIp(request);
   const rl = rateLimit(`oauth:${ip}`, 20, 60_000);
@@ -32,7 +33,8 @@ export async function POST(request: Request) {
     }
 
     if (
-      process.env.ALLOW_DEV_OAUTH === '1' &&
+      (process.env.ALLOW_DEV_OAUTH === '1' ||
+        process.env.NODE_ENV !== 'production') &&
       (idToken === 'dev-google' || idToken === 'dev-apple')
     ) {
       const email =
@@ -77,10 +79,13 @@ async function issueSession(
       email,
       passwordHash: `oauth:${provider}`,
       displayName: displayName || email.split('@')[0],
+      emailVerified: true,
     });
+  } else if (!user.emailVerified) {
+    await markEmailVerified(user.id);
+    user = (await findUserByEmail(email))!;
   }
 
   const token = signToken({ sub: user.id, email: user.email });
-  const { passwordHash: _, ...profile } = user;
-  return json({ token, user: profile, provider });
+  return json({ token, user: toPublicUser(user), provider });
 }

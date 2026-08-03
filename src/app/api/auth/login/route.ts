@@ -1,7 +1,7 @@
 import { signToken, verifyPassword } from '@/lib/auth/crypto';
 import { error, json } from '@/lib/auth/http';
 import { clientIp, rateLimit } from '@/lib/auth/rateLimit';
-import { findUserByEmail } from '@/lib/auth/store';
+import { findUserByEmail, toPublicUser } from '@/lib/auth/store';
 
 export const runtime = 'nodejs';
 
@@ -24,7 +24,7 @@ export async function POST(request: Request) {
       return error('Invalid email or password', 401, { code: 'BAD_CREDENTIALS' });
     }
     if (user.passwordHash.startsWith('oauth:')) {
-      return error('This account uses Google or Apple sign-in', 400, {
+      return error('This account uses Google sign-in', 400, {
         code: 'USE_OAUTH',
       });
     }
@@ -33,8 +33,11 @@ export async function POST(request: Request) {
     }
 
     const token = signToken({ sub: user.id, email: user.email });
-    const { passwordHash: _, ...profile } = user;
-    return json({ token, user: profile });
+    return json({
+      token,
+      user: toPublicUser(user),
+      needsVerification: !user.emailVerified,
+    });
   } catch (err) {
     console.error('login', err);
     return error('Could not sign in', 500);

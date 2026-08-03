@@ -1,22 +1,17 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { LiveRefreshNote } from '@/components/whale/LiveRefreshNote';
-import { PaperPortfolio } from '@/components/whale/PaperPortfolio';
 import { DataStatusLine } from '@/components/whale/Shell';
 import { useScrapeStatus } from '@/lib/whale/useScrapeStatus';
-import { useAppStore } from '@/context/AppStore';
 import { useWebSocket } from '@/hooks/useWebSocket';
-import { fmtUsd } from '@/lib/whale/utils';
 import { authFetch } from '@/lib/auth/client';
 
 export function DataFeedBar() {
   const { status, lastFetch, error, refresh, isLoading } = useScrapeStatus();
-  const { portfolio } = useAppStore();
   const { live: wsLive } = useWebSocket();
   const bootstrapped = useRef(false);
-  const [paperOpen, setPaperOpen] = useState(false);
 
   useEffect(() => {
     if (bootstrapped.current) return;
@@ -81,18 +76,9 @@ export function DataFeedBar() {
                 WS live
               </span>
             )}
-            <button
-              type="button"
-              className="data-status-line hover:opacity-80 transition-opacity text-left"
-              onClick={() => setPaperOpen(true)}
-              title="Open paper trading portfolio"
-            >
-              <span className="data-status-label">Paper</span> {fmtUsd(portfolio.cash)}
-            </button>
           </div>
         </div>
       </div>
-      {paperOpen && <PaperPortfolio onClose={() => setPaperOpen(false)} />}
     </div>
   );
 }

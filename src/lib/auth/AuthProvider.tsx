@@ -12,6 +12,7 @@ import {
   fetchMe,
   getToken,
   login as apiLogin,
+  oauthSignIn,
   setToken,
   signup as apiSignup,
 } from './client';
@@ -22,12 +23,19 @@ type AuthState = {
   user: UserProfile | null;
   isSignedIn: boolean;
   isPro: boolean;
+  emailVerified: boolean;
   signUp: (p: {
     email: string;
     password: string;
     displayName?: string;
-  }) => Promise<UserProfile>;
+  }) => Promise<{
+    user: UserProfile;
+    emailSent?: boolean;
+    emailError?: string;
+    verifyPreview?: string;
+  }>;
   signIn: (p: { email: string; password: string }) => Promise<UserProfile>;
+  signInWithGoogle: (idToken: string) => Promise<UserProfile>;
   signOut: () => void;
   refreshSession: () => Promise<void>;
   setTier: (tier: SubscriptionTier) => void;
@@ -63,13 +71,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const res = await apiSignup(p);
       setToken(res.token);
       setUser(res.user);
-      return res.user;
+      return {
+        user: res.user,
+        emailSent: res.emailSent,
+        emailError: res.emailError,
+        verifyPreview: res.verifyPreview,
+      };
     },
     [],
   );
 
   const signIn = useCallback(async (p: { email: string; password: string }) => {
     const res = await apiLogin(p);
+    setToken(res.token);
+    setUser(res.user);
+    return res.user;
+  }, []);
+
+  const signInWithGoogle = useCallback(async (idToken: string) => {
+    const res = await oauthSignIn({ provider: 'google', idToken });
     setToken(res.token);
     setUser(res.user);
     return res.user;
@@ -90,13 +110,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       isSignedIn: Boolean(user),
       isPro: user?.tier === 'pro',
+      emailVerified: Boolean(user?.emailVerified),
       signUp,
       signIn,
+      signInWithGoogle,
       signOut,
       refreshSession,
       setTier,
     }),
-    [ready, user, signUp, signIn, signOut, refreshSession, setTier],
+    [
+      ready,
+      user,
+      signUp,
+      signIn,
+      signInWithGoogle,
+      signOut,
+      refreshSession,
+      setTier,
+    ],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

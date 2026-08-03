@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import path from 'path';
-import { randomUUID } from 'crypto';
+import { createHash, randomUUID } from 'crypto';
 import type { AuthUser, SubscriptionTier, UserProfile } from './types';
 import { resolveDataDir } from '@/lib/paths';
 
@@ -20,6 +20,16 @@ const usersById = new Map<string, AuthUser>();
 const usersByEmail = new Map<string, AuthUser>();
 let loaded = false;
 
+function normalizeUser(raw: AuthUser): AuthUser {
+  const oauth = raw.passwordHash?.startsWith('oauth:');
+  const emailVerified = oauth
+    ? true
+    : typeof raw.emailVerified === 'boolean'
+      ? raw.emailVerified
+      : true; // grandfather pre-verification accounts
+  return { ...raw, emailVerified };
+}
+
 function ensureLoaded() {
   if (loaded) return;
   loaded = true;
@@ -29,8 +39,9 @@ function ensureLoaded() {
     const raw = readFileSync(storePath, 'utf8');
     const parsed = JSON.parse(raw) as StoreFile;
     for (const u of parsed.users || []) {
-      usersById.set(u.id, u);
-      usersByEmail.set(u.email.toLowerCase(), u);
+      const user = normalizeUser(u);
+      usersById.set(user.id, user);
+      usersByEmail.set(user.email.toLowerCase(), user);
     }
   } catch {
     /* start empty */
@@ -50,10 +61,15 @@ function toPublic(u: AuthUser): UserProfile {
     email: u.email,
     displayName: u.displayName,
     tier: u.tier,
+    emailVerified: Boolean(u.emailVerified),
     stripeCustomerId: u.stripeCustomerId,
     stripeSubscriptionId: u.stripeSubscriptionId,
     createdAt: u.createdAt,
   };
+}
+
+export function hashVerifyToken(token: string): string {
+  return createHash('sha256').update(token).digest('hex');
 }
 
 export async function findUserById(id: string): Promise<AuthUser | null> {
@@ -70,17 +86,20 @@ export async function createUser(input: {
   email: string;
   passwordHash: string;
   displayName?: string;
+  emailVerified?: boolean;
 }): Promise<AuthUser> {
   ensureLoaded();
   const email = input.email.trim().toLowerCase();
   if (usersByEmail.has(email)) {
     throw new Error('Email already registered');
   }
+  const oauth = input.passwordHash.startsWith('oauth:');
   const user: AuthUser = {
     id: randomUUID(),
     email,
     displayName: (input.displayName || email.split('@')[0] || 'Trader').trim(),
     passwordHash: input.passwordHash,
+    emailVerified: input.emailVerified ?? oauth,
     tier: 'free',
     createdAt: new Date().toISOString(),
   };
@@ -97,6 +116,53 @@ export function toPublicUser(u: AuthUser): UserProfile {
 export async function getPublicUser(id: string): Promise<UserProfile | null> {
   const u = await findUserById(id);
   return u ? toPublic(u) : null;
+}
+
+export async function setVerificationToken(
+  userId: string,
+  rawToken: string,
+  expiresAt: Date,
+): Promise<void> {
+  ensureLoaded();
+  const user = usersById.get(userId);
+  if (!user) throw new Error('User not found');
+  user.emailVerifyTokenHash = hashVerifyToken(rawToken);
+  user.emailVerifyExpiresAt = expiresAt.toISOString();
+  usersById.set(userId, user);
+  usersByEmail.set(user.email, user);
+  persist();
+}
+
+export async function markEmailVerified(userId: string): Promise<UserProfile> {
+  ensureLoaded();
+  const user = usersById.get(userId);
+  if (!user) throw new Error('User not found');
+  user.emailVerified = true;
+  delete user.emailVerifyTokenHash;
+  delete user.emailVerifyExpiresAt;
+  usersById.set(userId, user);
+  usersByEmail.set(user.email, user);
+  persist();
+  return toPublic(user);
+}
+
+export async function verifyEmailWithToken(
+  rawToken: string,
+): Promise<UserProfile | null> {
+  ensureLoaded();
+  const hash = hashVerifyToken(rawToken);
+  const now = Date.now();
+  for (const user of usersById.values()) {
+    if (!user.emailVerifyTokenHash || user.emailVerifyTokenHash !== hash) continue;
+    if (
+      user.emailVerifyExpiresAt &&
+      new Date(user.emailVerifyExpiresAt).getTime() < now
+    ) {
+      return null;
+    }
+    return markEmailVerified(user.id);
+  }
+  return null;
 }
 
 export async function upgradeToPro(

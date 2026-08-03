@@ -11,9 +11,9 @@ export const FREE_APP_PREFIXES = [
   '/profile',
   '/alerts',
   '/tools/kelly',
-  '/tools/portfolio',
   '/market',
   '/account',
+  '/verify',
 ] as const;
 
 export const PRO_APP_PREFIXES = [
@@ -60,7 +60,7 @@ export const FREE_FEATURES = [
   'Whale dashboard & holdings vs odds',
   'Trader leaderboard and profiles',
   'Market screener',
-  'Kelly calculator & paper tools',
+  'Kelly calculator',
   'Basic alerts',
 ] as const;
 

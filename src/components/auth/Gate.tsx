@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthProvider';
 import { useAuthModal } from '@/lib/auth/AuthModalContext';
 import { isProAppPath } from '@/lib/auth/plans';
@@ -12,6 +12,7 @@ import { PRO_PRICE_LABEL } from '@/lib/auth/types';
 export function isPublicPath(pathname: string) {
   if (pathname === '/') return true;
   if (pathname === '/paywall' || pathname === '/account') return true;
+  if (pathname === '/verify') return true;
   if (pathname === '/research' || pathname.startsWith('/research/')) return true;
   if (pathname === '/pricing') return true;
   return false;
@@ -20,6 +21,7 @@ export function isPublicPath(pathname: string) {
 /** Marketing surfaces use their own chrome (not the app nav). */
 export function isMarketingPath(pathname: string) {
   if (pathname === '/') return true;
+  if (pathname === '/verify') return true;
   if (pathname === '/research' || pathname.startsWith('/research/')) return true;
   if (pathname === '/pricing') return true;
   return false;
@@ -105,19 +107,18 @@ function proFeatureLabel(pathname: string) {
 }
 
 export function Gate({ children }: { children: React.ReactNode }) {
-  const { ready, isSignedIn, isPro } = useAuth();
+  const { ready, isSignedIn, isPro, emailVerified } = useAuth();
+  const { openAuth, open } = useAuthModal();
   const pathname = usePathname();
-  const router = useRouter();
   const pub = isPublicPath(pathname);
   const needsPro = isProAppPath(pathname);
 
   useEffect(() => {
-    // Free users stay on free routes; Pro routes show upgrade wall (no hard redirect loop).
-    if (!ready || pub || !isSignedIn) return;
-    if (needsPro && !isPro) {
-      /* render ProRequired below */
+    if (!ready || pub || !isSignedIn || emailVerified) return;
+    if (!open) {
+      openAuth({ mode: 'signup', panel: 'checkEmail', next: pathname || '/dashboard' });
     }
-  }, [ready, pub, isSignedIn, isPro, needsPro, pathname, router]);
+  }, [ready, pub, isSignedIn, emailVerified, open, openAuth, pathname]);
 
   if (!ready) {
     if (pub) return <>{children}</>;
@@ -137,6 +138,24 @@ export function Gate({ children }: { children: React.ReactNode }) {
 
   if (!isSignedIn) {
     return <AuthRequired next={pathname || '/dashboard'} />;
+  }
+
+  if (!emailVerified) {
+    return (
+      <div className="flex min-h-[70vh] flex-col items-center justify-center px-6 text-center">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/logo.png"
+          alt=""
+          className="h-10 w-10 rounded-lg object-cover"
+          width={40}
+          height={40}
+        />
+        <p className="mt-5 text-sm" style={{ color: 'var(--text-2)' }}>
+          Confirm your email to continue
+        </p>
+      </div>
+    );
   }
 
   if (needsPro && !isPro) {

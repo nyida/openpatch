@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
 import { ExternalLink, Share2 } from 'lucide-react';
-import { PaperTradeModal } from '@/components/whale/PaperTradeModal';
 import { SpreadSparkline } from '@/components/whale/SpreadSparkline';
 import { ContractCell } from '@/components/whale/PlatformTag';
 import { RiskBadge } from '@/components/whale/RiskBadge';
@@ -78,7 +77,6 @@ export function MarketDetailView() {
   const [positionsLoading, setPositionsLoading] = useState(true);
   const [screenerRow, setScreenerRow] = useState<ScreenerRow | null>(null);
   const [catalog, setCatalog] = useState<ScreenerRow[]>([]);
-  const [paperOpen, setPaperOpen] = useState(false);
   const [shareId, setShareId] = useState<string | null>(null);
   const createWorkspace = useWorkspaceStore((s) => s.createWorkspace);
   const addMarket = useWorkspaceStore((s) => s.addMarketToWorkspace);
@@ -231,9 +229,6 @@ export function MarketDetailView() {
               <Share2 className="w-3 h-3 inline mr-1" />
               Share
             </button>
-            <button type="button" className="btn btn-ghost text-xs" onClick={() => setPaperOpen(true)}>
-              Paper trade
-            </button>
             <a href={externalUrl} target="_blank" rel="noreferrer" className="btn btn-primary text-xs">
               Open on {platformShort(venue)} <ExternalLink className="w-3 h-3 ml-1 inline" />
             </a>
@@ -350,16 +345,6 @@ export function MarketDetailView() {
           )}
         </div>
       </div>
-
-      <PaperTradeModal
-        open={paperOpen}
-        onClose={() => setPaperOpen(false)}
-        marketTitle={title}
-        venue={venue}
-        price={spread?.poly_price ?? price}
-        externalUrl={externalUrl}
-        direction={spread?.direction === 'neutral' ? undefined : spread?.direction}
-      />
     </Shell>
   );
 }

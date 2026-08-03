@@ -3,11 +3,10 @@
 import { Fragment, memo, useState } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, ExternalLink, Wallet } from 'lucide-react';
+import { ChevronDown, ExternalLink } from 'lucide-react';
 import { DualBar, edgeFromPct } from '@/components/whale/SentimentCompare';
 import { ContractCell } from '@/components/whale/PlatformTag';
 import { NetROIBadge } from '@/components/whale/NetROIBadge';
-import { PaperTradeModal } from '@/components/whale/PaperTradeModal';
 import { SpreadSparkline } from '@/components/whale/SpreadSparkline';
 import { inferMarketCategory } from '@/lib/whale/categories';
 import { marketDetailPath } from '@/lib/whale/marketRoutes';
@@ -61,7 +60,6 @@ export const MarketRow = memo(function MarketRow({
   const [data, setData] = useState<Position[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [paperOpen, setPaperOpen] = useState(false);
 
   const yesPct = parseYesPct(market.whale_sentiment);
   const marketPct = Math.round(market.market_price * 1000) / 10;
@@ -154,14 +152,6 @@ export const MarketRow = memo(function MarketRow({
         <td className="col-num font-mono tabular-nums">{market.trader_count}</td>
         <td className="col-act" onClick={(e) => e.stopPropagation()}>
           <div className="row-actions">
-            <button
-              type="button"
-              className="icon-btn"
-              aria-label="Paper trade"
-              onClick={() => setPaperOpen(true)}
-            >
-              <Wallet className="w-3 h-3" />
-            </button>
             {href && (
               <a href={href} target="_blank" rel="noreferrer" className="icon-btn" aria-label="Open market">
                 <ExternalLink className="w-3 h-3" />
@@ -245,18 +235,6 @@ export const MarketRow = memo(function MarketRow({
           </AnimatePresence>
         </td>
       </tr>
-
-      <PaperTradeModal
-        open={paperOpen}
-        onClose={() => setPaperOpen(false)}
-        marketTitle={cleanName}
-        venue={market.platform === 'kalshi' ? 'kalshi' : 'polymarket'}
-        price={spread?.poly_price ?? market.market_price}
-        externalUrl={market.external_url}
-        direction={
-          spread?.direction === 'neutral' ? undefined : spread?.direction
-        }
-      />
     </Fragment>
   );
 });

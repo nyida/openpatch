@@ -68,7 +68,14 @@ export async function signup(p: {
   password: string;
   displayName?: string;
 }) {
-  return api<{ token: string; user: UserProfile }>('/api/auth/signup', {
+  return api<{
+    token: string;
+    user: UserProfile;
+    needsVerification?: boolean;
+    emailSent?: boolean;
+    emailError?: string;
+    verifyPreview?: string;
+  }>('/api/auth/signup', {
     method: 'POST',
     body: JSON.stringify(p),
     auth: false,
@@ -76,10 +83,50 @@ export async function signup(p: {
 }
 
 export async function login(p: { email: string; password: string }) {
-  return api<{ token: string; user: UserProfile }>('/api/auth/login', {
+  return api<{
+    token: string;
+    user: UserProfile;
+    needsVerification?: boolean;
+  }>('/api/auth/login', {
     method: 'POST',
     body: JSON.stringify(p),
     auth: false,
+  });
+}
+
+export async function oauthSignIn(p: {
+  provider: 'google' | 'apple';
+  idToken: string;
+  email?: string;
+  displayName?: string;
+}) {
+  return api<{ token: string; user: UserProfile; provider: string }>(
+    '/api/auth/oauth',
+    {
+      method: 'POST',
+      body: JSON.stringify(p),
+      auth: false,
+    },
+  );
+}
+
+export async function verifyEmailToken(token: string) {
+  return api<{ user: UserProfile; verified: boolean }>('/api/auth/verify', {
+    method: 'POST',
+    body: JSON.stringify({ token }),
+    auth: false,
+  });
+}
+
+export async function resendVerification() {
+  return api<{
+    sent?: boolean;
+    alreadyVerified?: boolean;
+    emailError?: string;
+    verifyPreview?: string;
+  }>('/api/auth/resend-verification', {
+    method: 'POST',
+    body: JSON.stringify({}),
   });
 }
 
